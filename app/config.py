@@ -1,8 +1,8 @@
 # Conexão ao Postgres
-# conecta ao servidor PostgreSQL - Google cloud
-#DATABASE_PROD_URL = "postgres://portalseg:WAgqyA7GDmeL22gXiskJAWZpzRMiaiEyHHKsofLVjwaCGWboJ7vbpqHHjpAbjYRe@portal.geocart.xyz:5432/portalseg"
+conecta ao servidor PostgreSQL - Google cloud
+DATABASE_PROD_URL = "postgres://portalseg:WAgqyA7GDmeL22gXiskJAWZpzRMiaiEyHHKsofLVjwaCGWboJ7vbpqHHjpAbjYRe@portal.geocart.xyz:5432/portalseg"
 # conecta ao novo servidor Local
-DATABASE_PROD_URL = "postgres://postgres:ProjetoCTG@localhost:5432/midiasii"
+#DATABASE_PROD_URL = "postgres://postgres:ProjetoCTG@localhost:5432/midiasii"
 # conecta ao servidor PostgreSQL - Heroku
 # DATABASE_PROD_URL = os.environ['DATABASE_URL']
 
