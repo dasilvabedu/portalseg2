@@ -117,7 +117,6 @@ def alteraDado(tabela, valores, condicao=None):
         comando = "UPDATE " + tabela + " SET " + valores
         if condicao is not None:
             comando = comando + " " + condicao
-
         resultado = []
         cur.execute(comando)
         conn.commit()
@@ -560,6 +559,15 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
     conn = None
     try:
 
+        #recupera o próximo identificador
+        campo = 'max(usu_identificador)'
+        dados, retorno, mensagemRetorno = leDado('usu_usuario', None, campo)
+        if retorno != 200:
+            resultadoFinal = montaRetorno(retorno, mensagemRetorno)
+            return resultadoFinal, retorno, {}
+        proximoNumero = dados[0][0] + 1
+
+        #conexão ao banco
         conn = psycopg2.connect(database_url)
 
         if conn is None:
@@ -567,15 +575,6 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
 
         # criacao de cursor
         cur = conn.cursor()
-
-        #recupera o próximo identificador
-        campo = 'max(usu_identificador)'
-        dados, retorno, mensagemRetorno = leDado('usu_usuario', None, campo)
-        if retorno != 200:
-            resultadoFinal = montaRetorno(retorno, mensagemRetorno)
-            return resultadoFinal, retorno, ''
-
-        proximoNumero = dados[0][0] + 1
 
         # trata dos dados de sistema e inclui usuário
         agora = datetime.datetime.utcnow()
@@ -592,18 +591,19 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
             campos = campos + ',usu_email'
             valores = valores + ",'" + usu_email + "'"
 
-        dados, retorno, mensagemRetorno = insereDado('usu_usuario', campos, valores)
-        if retorno != 201:
-            resultadoFinal = montaRetorno(retorno, mensagemRetorno)
-            return resultadoFinal, retorno, ''
+        tabela = 'usu_usuario'
+        comando = "INSERT INTO " + tabela + " (" + campos + ") values (" + valores + ")"
+
+        cur.execute(comando)
 
         # inclui perfil
-        campos = 'usu_identificador, pfa_identificador'
-        valores = str(proximoNumero) + ", 2"
-        dados, retorno, mensagemRetorno = insereDado('usu_pfa_usuario_perfilacesso', campos, valores)
-        if retorno != 201:
-            resultadoFinal = montaRetorno(retorno, mensagemRetorno)
-            return resultadoFinal, retorno, ''
+        campos = 'usu_identificador, pfa_identificador, usu_pfa_identificadoratualizacao, usu_pfa_dataatualizacao'
+        valores = str(proximoNumero) + ", 2, " + str(proximoNumero) + ",'" + iat + "'"
+
+        tabela = 'usu_pfa_usuario_perfilacesso'
+        comando = "INSERT INTO " + tabela + " (" + campos + ") values (" + valores + ")"
+
+        cur.execute(comando)
 
         dicionarioRetorno = {}
         dicionarioRetorno['sub'] = proximoNumero
@@ -665,6 +665,8 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
         return resultado, 201, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
+        conn.rollback()
+        conn.close()
         return [], 404, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:

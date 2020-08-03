@@ -29,7 +29,7 @@ def documentacaoGeral():
     return listaMensagem, retorno, {}
 
 def documentacaoAgrupado(grupo):
-    if grupo == "geral:":
+    if grupo == "geral":
         header = {}
     else:
         checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
@@ -47,7 +47,7 @@ def documentacaoAgrupado(grupo):
     for i in range(len(dados)):
         lista = {}
         lista['grupo'] = dados[i][0]
-        lista['nome'] = dados[i][1]
+        lista['titulo'] = dados[i][1]
         lista['descricao'] = dados[i][2]
         lista['arquivo'] = dados[i][3]
         retorna.append(lista)

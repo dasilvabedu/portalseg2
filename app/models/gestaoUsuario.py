@@ -3,9 +3,9 @@
 from ..views import acessoBanco
 from ..models import gestaoAutenticacao, gestaoUsuario
 from flask import request
-import re
 import bcrypt
 import datetime
+from validate_email import validate_email
 
 def trataLogin(usu_login, usu_senha):
 
@@ -194,9 +194,9 @@ def usuarioTokenDesativado():
 
         tki_identificador = dados[0][0] + 1
 
-    token, dados = gestaoAutenticacao.expandeToken()
+    token, dadosToken = gestaoAutenticacao.expandeToken()
     campos = 'count(usu_identificador)'
-    condicao = "WHERE usu_identificador = " + str(dados['sub'])
+    condicao = "WHERE usu_identificador = " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, campos)
     if retorno == 404:
         resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
@@ -206,8 +206,8 @@ def usuarioTokenDesativado():
         return {"message": "Usuário foi apagado da base de dados"}, 400, {}
 
     campos = 'tki_identificador, usu_identificador, tki_token, tki_dataexpiracao, tki_identificadoratualizacao, tki_dataatualizacao'
-    valores = str(tki_identificador) + "," + str(dados['sub']) + ",'" + token + "','" + dados['exp'].strftime('%Y-%m-%d %H:%M:%S')
-    valores = valores + "'," + str(dados['sub']) + ",'" + datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + "'"
+    valores = str(tki_identificador) + "," + str(dadosToken['sub']) + ",'" + token + "','" + dadosToken['exp'].strftime('%Y-%m-%d %H:%M:%S')
+    valores = valores + "'," + str(dadosToken['sub']) + ",'" + datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + "'"
     resultado, retorno, mensagem = acessoBanco.insereDado('tki_tokeninvalidado', campos, valores)
     if retorno != 201:
         return {"message": "Erro no acesso ao banco"},400,header
@@ -218,8 +218,6 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
     cheque = {}
     cheque['message'] = ''
     erro = False
-
-    email_valido = re.compile(r'^[\w-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
 
     if usu_senha is None or len(usu_senha) < 8:
         cheque['message'] = 'Senha é obrigatória, com tamanho mínimo de 8 caracteres'
@@ -254,7 +252,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
         erro = True
 
     if usu_email is not None and len(usu_celular) > 0:
-        if not email_valido.match(usu_email):
+        if validate_email(usu_email):
             if not erro:
                 cheque['message'] = 'Email invalido'
                 erro = True
@@ -305,14 +303,11 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
 
 def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
 
-
     usu_identificador = id
 
     cheque = {}
     erro = False
     alteracao = False
-
-    email_valido = re.compile(r'^[\w-]+@(?:[a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$')
 
     if usu_celular is not None and len(usu_celular) > 0:
         if not inteiro(usu_celular):
@@ -331,8 +326,8 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
             alteracao = True
 
     if usu_email is not None and len(usu_email) > 0:
-        if email_valido.match(usu_email):
-            alteracao = True
+        if validate_email(usu_email):
+             alteracao = True
         else:
             if not erro:
                 cheque['message'] = 'Email invalido'

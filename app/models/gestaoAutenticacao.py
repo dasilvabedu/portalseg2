@@ -86,7 +86,7 @@ def trataValidaToken():
         if expiracao < agora:
             volta['iat'] = agora
             novoToken = geraToken(volta)
-            header['X-New-Bearer-Token'] = novoToken
+            header['X-New-Bearer-Token'] = 'Bearer ' + novoToken
         return True, {}, header
     except:
        return False,{"message": "Token Inválido"},{}
@@ -100,6 +100,7 @@ def expandeToken():
     expiracao = iatdt + datetime.timedelta(minutes=duracao)
     volta['exp'] = expiracao
     volta['iatdt'] = iatdt
+
     return codificado, volta
 
 
