@@ -1,1 +1,1 @@
-web: gunicorn segurancaBarragem.py:app
+web: gunicorn segurancaBarragem:app
