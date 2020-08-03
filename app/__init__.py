@@ -5,8 +5,10 @@ app = Flask(__name__)
 CORS(app)
 
 from .models import gestaoDado, gestaoMetadado, gestaoUsuario, gestaoOrganizacao
-from .models import gestaoAutenticacao, gestaoDocumentacao, gestaoChatterbot
+from .models import gestaoAutenticacao, gestaoDocumentacao, gestaoChatterbot, gestaoUHE
+from .models import gestaoAgente, gestaoMorador
 from .views import acessoBanco
 from .controllers import rotaDado, rotaErro, rotaMetadado, rotaUsuario, rotaOrganizacao
-from .controllers import rotaAutenticacao, rotaDocumentacao, rotaChatterbot
+from .controllers import rotaAutenticacao, rotaDocumentacao, rotaChatterbot, rotaUHE
+from .controllers import rotaAgente, rotaMorador
 
