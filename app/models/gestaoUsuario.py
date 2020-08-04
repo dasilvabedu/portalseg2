@@ -274,7 +274,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, camposDesejados)
 
     if retorno == 404:
-        return {"message": "Erro no acesso ao banco de dados"}, retorno,{}
+        return {"message": "&&Erro no acesso ao banco de dados"}, retorno,{}
 
     if dados != []:
         autentica = ' '
