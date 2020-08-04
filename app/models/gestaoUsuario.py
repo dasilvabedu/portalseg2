@@ -251,7 +251,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
             cheque['message'] = cheque['message'] + ' - Nome do usuário é obrigatorio'
         erro = True
 
-    if usu_email is not None and len(usu_celular) > 0:
+    if usu_email is not None and len(usu_email) > 0:
         if validate_email(usu_email):
             if not erro:
                 cheque['message'] = 'Email invalido'
