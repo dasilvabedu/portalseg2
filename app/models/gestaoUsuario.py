@@ -231,7 +231,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
         erro = True
 
     if usu_celular is not None and len(usu_celular) > 0:
-        if not int(usu_celular):
+        if not inteiro(usu_celular):
             if not erro:
                 cheque['message'] = 'Celular deve ser numérico'
             else:
