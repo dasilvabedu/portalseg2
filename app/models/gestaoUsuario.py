@@ -274,7 +274,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, camposDesejados)
 
     if retorno == 404:
-        return {"message": "&&Erro no acesso ao banco de dados"}, retorno,{}
+        return {"message": "Erro no acesso ao banco de dados"}, retorno,{}
 
     if dados != []:
         autentica = ' '
@@ -287,7 +287,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
 
     dados, retorno, header = acessoBanco.insereUsuario(usu_celular, usu_email, usu_senha, usu_nome)
     if retorno != 201:
-        return {"message": "Erro no acesso ao banco de dados"}, 404, {}
+        return {"message": "&&Erro no acesso ao banco de dados"}, 404, {}
 
     # gera o token
     token = gestaoAutenticacao.geraToken(dados)
