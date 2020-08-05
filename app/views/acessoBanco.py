@@ -157,6 +157,7 @@ def leDado(tabela, condicao=None, camposDesejados=None):
             comando = comando + ' ' + condicao
 
         resultado = []
+        print (comando)
         cur.execute(comando)
         recset = cur.fetchall()
         for rec in recset:
@@ -565,8 +566,10 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
         if retorno != 200:
             resultadoFinal = montaRetorno(retorno, mensagemRetorno)
             return resultadoFinal, retorno, {}
-        proximoNumero = dados[0][0] + 1
-
+        if dados[0][0] is None:
+            proximoNumero = 1
+        else:
+            proximoNumero = dados[0][0] + 1
         #conexão ao banco
         conn = psycopg2.connect(database_url)
 
@@ -593,7 +596,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
 
         tabela = 'usu_usuario'
         comando = "INSERT INTO " + tabela + " (" + campos + ") values (" + valores + ")"
-
+        print (comando)
         cur.execute(comando)
 
         # inclui perfil
@@ -602,7 +605,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
 
         tabela = 'usu_pfa_usuario_perfilacesso'
         comando = "INSERT INTO " + tabela + " (" + campos + ") values (" + valores + ")"
-
+        print (comando)
         cur.execute(comando)
 
         dicionarioRetorno = {}

@@ -286,8 +286,9 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
             return cheque, 400, {}
 
     dados, retorno, header = acessoBanco.insereUsuario(usu_celular, usu_email, usu_senha, usu_nome)
+    print (str(retorno))
     if retorno != 201:
-        return {"message": "&&Erro no acesso ao banco de dados"}, 404, {}
+        return {"message": "Erro no acesso ao banco de dados"}, 404, {}
 
     # gera o token
     token = gestaoAutenticacao.geraToken(dados)
