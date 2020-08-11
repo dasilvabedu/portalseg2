@@ -5,10 +5,9 @@ from ..models import gestaoAutenticacao
 from flask import request
 
 def organizacaoGeral():
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        resultadoFinal = acessoBanco.montaRetorno(401, mensagem)
-        return resultadoFinal, 401, header
+        return mensagem, 400, ''
 
     # realiza consulta no banco - grupo economico
     camposDesejados = 'gec_identificador,gec_nome'
@@ -35,10 +34,9 @@ def organizacaoGeral():
     return resultadoFinal, retorno, header
 
 def organizacaoCadastrado():
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        resultadoFinal = acessoBanco.montaRetorno(401, mensagem)
-        return resultadoFinal, 401, header
+        return mensagem, 400, ''
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
@@ -75,10 +73,9 @@ def organizacaoCadastrado():
     return resultadoFinal, 200, header
 
 def organizacaoExcluido():
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        resultadoFinal = acessoBanco.montaRetorno(401, mensagem)
-        return resultadoFinal, 401, header
+        return mensagem, 400, ''
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
@@ -246,10 +243,9 @@ def organizacaoExcluido():
         return resultadoFinal, 200, header
 
 def organizacaoIncluido():
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        resultadoFinal = acessoBanco.montaRetorno(401, mensagem)
-        return resultadoFinal, 401, header
+        return mensagem, 400, ''
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
@@ -494,10 +490,9 @@ def organizacaoIncluido():
         return resultadoFinal, 200, header
 
 def organizacaoAlterado():
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        resultadoFinal = acessoBanco.montaRetorno(401, mensagem)
-        return resultadoFinal, 401, header
+        return mensagem, 400, ''
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
