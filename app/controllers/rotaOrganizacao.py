@@ -14,17 +14,17 @@ def api_organizacao_cadastrado():
     resultado, retorno, header = gestaoOrganizacao.organizacaoCadastrado()
     return jsonify(resultado), retorno, header
 
-@app.route('/seguranca_barragem/organizacao/incluido', methods=['GET','POST'])
+@app.route('/seguranca_barragem/organizacao/incluido', methods=['POST'])
 def api_organizacao_incluido():
     resultado, retorno, header = gestaoOrganizacao.organizacaoIncluido()
     return jsonify(resultado), retorno, header
 
-@app.route('/seguranca_barragem/organizacao/alterado', methods=['GET','PUT'])
+@app.route('/seguranca_barragem/organizacao/alterado', methods=['PATCH'])
 def api_organizacao_alterado():
     resultado, retorno, header = gestaoOrganizacao.organizacaoAlterado()
     return jsonify(resultado), retorno, header
 
-@app.route('/seguranca_barragem/organizacao/excluido', methods=['GET','PUT'])
+@app.route('/seguranca_barragem/organizacao/excluido', methods=['DELETE'])
 def api_organizacao_excluido():
     resultado, retorno, header = gestaoOrganizacao.organizacaoExcluido()
     return jsonify(resultado), retorno, header

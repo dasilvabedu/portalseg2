@@ -19,13 +19,13 @@ def api_dado_extenso():
     resultado, retorno = gestaoDado.dadoExtenso()
     return jsonify(resultado), retorno
 
-@app.route('/seguranca_barragem/dado/convencional/atualizado', methods=['GET','POST'])
+@app.route('/seguranca_barragem/dado/convencional/atualizado', methods=['POST'])
 def api_dado_convencional_atualizado():
     resultado, retorno = gestaoDado.dadoConvencionalAtualizado()
     return jsonify(resultado), retorno
 
 
-@app.route('/seguranca_barragem/dado/excluido', methods=['GET','PUT'])
+@app.route('/seguranca_barragem/dado/excluido', methods=['PUT'])
 def api_dado_excluido():
     resultado, retorno = gestaoDado.dadoExcluido()
     return jsonify(resultado), retorno

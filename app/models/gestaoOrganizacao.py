@@ -3,11 +3,13 @@
 from ..views import acessoBanco
 from ..models import gestaoAutenticacao
 from flask import request
+import datetime
 
 def organizacaoGeral():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
 
     # realiza consulta no banco - grupo economico
     camposDesejados = 'gec_identificador,gec_nome'
@@ -36,7 +38,8 @@ def organizacaoGeral():
 def organizacaoCadastrado():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
@@ -46,10 +49,10 @@ def organizacaoCadastrado():
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel ou Nome não fornecido(s)'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
     resultado = acessoBanco.montaRetorno(200, '')
     if nivel == "grupoeconomico":
@@ -65,17 +68,18 @@ def organizacaoCadastrado():
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel ' + nivel + ' é inválido.'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
     return resultadoFinal, 200, header
 
 def organizacaoExcluido():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
@@ -85,10 +89,10 @@ def organizacaoExcluido():
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel ou Nome não fornecido(s)'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
     resultado = acessoBanco.montaRetorno(200, '')
     if nivel == "grupoeconomico":
@@ -98,7 +102,7 @@ def organizacaoExcluido():
         dados, retorno, mensagemRetorno = acessoBanco.dado('gec_grupoeconomico', condicao, camposDesejados, None)
         if retorno != 200:
             resultadoGEC = []
-            return resultadoGEC, retorno,''
+            return resultadoGEC, retorno, header
 
         # recupera as companhias do grupo
         condicao = 'WHERE gec_identificador in ('
@@ -107,25 +111,25 @@ def organizacaoExcluido():
         condicao = condicao[0:-1] + ')'
         dados, retorno, mensagemRetorno = acessoBanco.dado('gec_cia_grupoeconomico_companhia', condicao, None, None)
         if retorno != 200:
-            return resultado, retorno,''
+            return resultado, retorno, header
         if dados != []:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Grupo econômico possui Companhia(s). Delete-a(s) previamente.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
         # deleta
         dados, retorno, mensagemRetorno = acessoBanco.exclueDado('gec_grupoeconomico', condicao)
         if retorno != 200:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Grupo Econômico não excluido.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(retorno, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, retorno, header
         else:
             listaMensagem = {}
             listaMensagem['acesso'] = 'ok'
@@ -142,7 +146,7 @@ def organizacaoExcluido():
         dados, retorno, mensagemRetorno = acessoBanco.dado('cia_companhia', condicao, camposDesejados, None)
         if retorno != 200:
             resultado = []
-            return resultado, retorno,''
+            return resultado, retorno, header
 
         # recupera os empreendimentos da cia
         condicao = 'WHERE cia_identificador in ('
@@ -151,35 +155,34 @@ def organizacaoExcluido():
         condicao = condicao[0:-1] + ')'
         dados, retorno, mensagemRetorno = acessoBanco.dado('emp_empreendimento', condicao, None, None)
         if retorno != 200:
-            return resultado, retorno,''
+            return resultado, retorno, header
         if dados != []:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Companhia possui Empreendimento(s). Delete-o(s) previamente.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         # deleta
-        dados, retorno, mensagemRetorno = acessoBanco.exclueDado('gec_cia_grupoeconomico_companhia', condicao)
+        tabela = []
+        condicaoNecessaria = []
+        tabela.append('gec_cia_grupoeconomico_companhia')
+        condicaoNecessaria.append(condicao)
+        tabela.append('cia_companhia')
+        condicaoNecessaria.append(condicao)
+
+        dados, retorno, mensagemRetorno = acessoBanco.exclueDadoMultiplo(tabela, condicaoNecessaria)
         if retorno != 200:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Companhia não excluida.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(retorno, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
-        dados, retorno, mensagemRetorno = acessoBanco.exclueDado('cia_companhia', condicao)
-        if retorno != 200:
-            listaMensagem = {}
-            listaMensagem['acesso'] = 'nok'
-            listaMensagem['texto'] = 'Companhia não excluida.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
-            resultadoFinal['retorno'] = listaMensagem
-            resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, retorno, header
+
         else:
             listaMensagem = {}
             listaMensagem['acesso'] = 'ok'
@@ -190,41 +193,37 @@ def organizacaoExcluido():
             return resultadoFinal, 200, header
 
     elif nivel == "empreendimento":
+        tabela = []
+        condicaoNecessaria = []
         condicao = "WHERE emp_nome = '" + nome + "'"
         # realiza consulta no banco - empreendimento
         camposDesejados = 'emp_identificador'
         dadosEmp, retorno, mensagemRetorno = acessoBanco.dado('emp_empreendimento', condicao, camposDesejados, None)
         if retorno != 200:
             resultado = []
-            return resultado, retorno,''
+            return resultado, retorno, header
 
         # deleta os PAEs do empreendimento
         condicao = 'WHERE emp_identificador in ('
         for i in range(len(dadosEmp)):
             condicao = condicao + str(dadosEmp[i]['emp_identificador']) + ','
         condicao = condicao[0:-1] + ')'
-        dados, retorno, mensagemRetorno = acessoBanco.exclueDado('pae_planoacaoemergencia', condicao)
-
-        if retorno != 200:
-            listaMensagem = {}
-            listaMensagem['acesso'] = 'nok'
-            listaMensagem['texto'] = 'PAES do Empreendimento possui dados. Empreendimento não excluído.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
-            resultadoFinal['retorno'] = listaMensagem
-            resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+        tabela.append('pae_planoacaoemergencia')
+        condicaoNecessaria.append(condicao)
 
         # deleta empreendimento
-        dados, retorno, mensagemRetorno = acessoBanco.exclueDado('emp_empreendimento', condicao)
+        tabela.append('emp_empreendimento')
+        condicaoNecessaria.append(condicao)
+        dados, retorno, mensagemRetorno = acessoBanco.exclueDadoMultiplo(tabela, condicaoNecessaria)
 
         if retorno != 200:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
-            listaMensagem['texto'] = 'Empreendimento não excluído.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            listaMensagem['texto'] = 'Empreendimento não excluído. Verifique se possui PAE ativo e delete-o previamente.'
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
         else:
             listaMensagem = {}
             listaMensagem['acesso'] = 'ok'
@@ -237,15 +236,20 @@ def organizacaoExcluido():
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel ' + nivel + ' é inválido.'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
 def organizacaoIncluido():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
+    codificado, volta = gestaoAutenticacao.expandeToken()
+    atual_usuario = volta['sub']
+    atual_data = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
@@ -253,15 +257,18 @@ def organizacaoIncluido():
     superior = query_parameters.get('superior')
     pae = query_parameters.get('pae')
     tipo = query_parameters.get('tipo')
+    sigla = query_parameters.get('sigla')
+
+    print(nivel, " - ",nome, " - ",superior, " - ",pae, " - ",tipo)
 
     if nivel is None or nome is None:
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel ou Nome não fornecido(s)'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
     resultado = acessoBanco.montaRetorno(200, '')
     if nivel == "grupoeconomico":
@@ -277,10 +284,10 @@ def organizacaoIncluido():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Já existe Grupo Econômico com este nome.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         # inclui
         campo = 'max(gec_identificador)'
@@ -291,15 +298,15 @@ def organizacaoIncluido():
 
         proximoNumero = dados[0][0] + 1
 
-        campos = 'gec_identificador, gec_nome'
-        valores = str(proximoNumero) + ",'" + nome + "'"
+        campos = 'gec_identificador, gec_nome, gec_identificadoratualizacao, gec_dataatualizacao'
+        valores = str(proximoNumero) + ",'" + nome + "'," + str(atual_usuario) + ",'" + atual_data + "'"
         dados, retorno, mensagemRetorno = acessoBanco.insereDado('gec_grupoeconomico', campos, valores)
         if retorno != 201:
             resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
             return resultadoFinal, retorno, header
 
         gecIncluido = {}
-        gecIncluido['usu_identificador'] = proximoNumero
+        gecIncluido['gec_identificador'] = proximoNumero
         resposta = acessoBanco.montaRetorno(201, '')
         resposta['aresposta']['texto'] = ''
         resposta['retorno'] = gecIncluido
@@ -310,10 +317,10 @@ def organizacaoIncluido():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Nivel Superior não fornecido(s)'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         condicao = "WHERE cia_nome = '" + nome + "'"
         # realiza consulta no banco - companhia
@@ -327,10 +334,10 @@ def organizacaoIncluido():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Companhia já existente.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         # verifica se o Grupo Econômico existe
         camposDesejados = 'gec_identificador'
@@ -344,10 +351,10 @@ def organizacaoIncluido():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Grupo Econômico inexistente'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
         gec_identificador = dados[0]['gec_identificador']
 
         # inclui
@@ -357,18 +364,23 @@ def organizacaoIncluido():
             resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
             return resultadoFinal, retorno, header
 
-        proximoNumero = dados[0][0] + 1
+        if dados == []:
+            proximoNumero = 1
+        else:
+            proximoNumero = dados[0][0] + 1
 
-        campos = 'cia_identificador, cia_nome'
-        valores = str(proximoNumero) + ",'" + nome + "'"
-        dados, retorno, mensagemRetorno = acessoBanco.insereDado('cia_companhia', campos, valores)
-        if retorno != 201:
-            resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-            return resultadoFinal, retorno, header
+        tabela = []
+        campos = []
+        valores = []
 
-        campos = 'cia_identificador, gec_identificador'
-        valores = str(proximoNumero) + "," + str(gec_identificador)
-        dados, retorno, mensagemRetorno = acessoBanco.insereDado('gec_cia_grupoeconomico_companhia', campos, valores)
+        campos.append ( 'cia_identificador, cia_nome, cia_identificadoratualizacao, cia_dataatualizacao')
+        valores.append (str(proximoNumero) + ",'" + nome + "'," + str(atual_usuario) + ",'" + atual_data + "'")
+        tabela.append('cia_companhia')
+
+        campos.append('cia_identificador, gec_identificador, gec_cia_identificadoratualizacao, gec_cia_dataatualizacao')
+        valores.append(str(proximoNumero) + "," + str(gec_identificador) + "," + str(atual_usuario) + ",'" + atual_data + "'")
+        tabela.append('gec_cia_grupoeconomico_companhia')
+        dados, retorno, mensagemRetorno = acessoBanco.insereDadoMultiplo(tabela, campos, valores)
         if retorno != 201:
             resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
             return resultadoFinal, retorno, header
@@ -381,34 +393,35 @@ def organizacaoIncluido():
         return resposta, 201, header
 
     elif nivel == "empreendimento":
-        if superior is None or tipo is None or pae is None:
+        print(nivel, " - ", nome, " - ", superior, " - ", pae, " - ", tipo)
+        if superior is None or tipo is None or pae is None or sigla is None:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
-            listaMensagem['texto'] = 'Nivel Superior, Tipo do Empreendimento ou Ativação do PAE não fornecido(s)'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            listaMensagem['texto'] = 'Nivel Superior, Tipo do Empreendimento, Sigla e/ou Ativação do PAE não fornecido(s)'
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         if tipo not in ('UHE','PCH'):
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Tipo de Empreendimento Invalido'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         if pae not in ('S','N'):
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Ativação de PAE Invalido'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
-        condicao = "WHERE emp_nome = '" + nome + "'"
+        condicao = "WHERE emp_nome = '" + nome + "' or emp_sigla = '" + sigla + "'"
         # realiza consulta no banco - empreendimento
         camposDesejados = 'emp_identificador'
         dados, retorno, mensagemRetorno = acessoBanco.dado('emp_empreendimento', condicao, camposDesejados, None)
@@ -419,11 +432,11 @@ def organizacaoIncluido():
         if dados != []:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
-            listaMensagem['texto'] = 'Empreendimento já existente.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            listaMensagem['texto'] = 'Nome e/ou Sigla do Empreendimento já existente(s).'
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         # verifica se a companhia existe
         camposDesejados = 'cia_identificador'
@@ -437,10 +450,10 @@ def organizacaoIncluido():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Companhia inexistente'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
         cia_identificador = dados[0]['cia_identificador']
 
         # inclui
@@ -450,14 +463,18 @@ def organizacaoIncluido():
             resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
             return resultadoFinal, retorno, header
 
-        proximoEmpreendimento = dados[0][0] + 1
+        if dados == []:
+            proximoEmpreendimento = 1
+        else:
+            proximoEmpreendimento = dados[0][0] + 1
 
-        campos = 'emp_identificador, emp_nome, cia_identificador, emp_tipo'
-        valores = str(proximoEmpreendimento) + ",'" + nome + "'," + str(cia_identificador) + ",'" + tipo + "'"
-        dados, retorno, mensagemRetorno = acessoBanco.insereDado('emp_empreendimento', campos, valores)
-        if retorno != 201:
-            resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-            return resultadoFinal, retorno, header
+        tabela = []
+        campos = []
+        valores = []
+
+        campos.append('emp_identificador, emp_nome, cia_identificador, emp_tipo, emp_sigla, emp_identificadoratualizacao, emp_dataatualizacao')
+        valores.append(str(proximoEmpreendimento) + ",'" + nome + "'," + str(cia_identificador) + ",'" + tipo + "','" + sigla + "'," + str(atual_usuario) + ",'" + atual_data + "'")
+        tabela.append('emp_empreendimento')
 
         if pae == 'S':
             campo = 'max(pae_identificador)'
@@ -465,14 +482,21 @@ def organizacaoIncluido():
             if retorno != 200:
                 resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
                 return resultadoFinal, retorno, header
-            proximoNumero = dados[0][0] + 1
 
-            campos = 'pae_identificador, emp_identificador'
-            valores = str(proximoNumero) + "," + str(proximoEmpreendimento)
-            dados, retorno, mensagemRetorno = acessoBanco.insereDado('pae_planoacaoemergencia', campos, valores)
-            if retorno != 201:
-                resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-                return resultadoFinal, retorno, header
+            if dados == []:
+                proximoNumero = 1
+            else:
+                proximoNumero = dados[0][0] + 1
+
+            texto_pae = "PAE - " + sigla
+            campos.append('pae_identificador, emp_identificador, pae_texto, pae_identificadoratualizacao, pae_dataatualizacao')
+            valores.append(str(proximoNumero) + "," + str(proximoEmpreendimento) + ",'" + texto_pae + "'," + str(atual_usuario) + ",'" + atual_data + "'")
+            tabela.append('pae_planoacaoemergencia')
+
+        dados, retorno, mensagemRetorno = acessoBanco.insereDadoMultiplo(tabela, campos, valores)
+        if retorno != 201:
+            resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
+            return resultadoFinal, retorno, header
 
         empIncluido = {}
         empIncluido['emp_identificador'] = proximoEmpreendimento
@@ -484,15 +508,21 @@ def organizacaoIncluido():
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel ' + nivel + ' é inválido.'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
 def organizacaoAlterado():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
+
+    codificado, volta = gestaoAutenticacao.expandeToken()
+    atual_usuario = volta['sub']
+    atual_data = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
     query_parameters = request.args
     nivel = query_parameters.get('nivel')
@@ -501,15 +531,16 @@ def organizacaoAlterado():
     superior = query_parameters.get('novosuperior')
     pae = query_parameters.get('novopae')
     tipo = query_parameters.get('novotipo')
+    sigla = query_parameters.get('novasigla')
 
     if nivel is None or nome is None:
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel e/ou Nome não fornecido(s)'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
     resultado = acessoBanco.montaRetorno(200, '')
     if nivel == "grupoeconomico":
@@ -517,10 +548,10 @@ def organizacaoAlterado():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Nada a alterar em Grupo Econômico'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         # realiza consulta no banco - grupo economico
         condicao = "WHERE gec_nome = '" + nome + "'"
@@ -534,10 +565,10 @@ def organizacaoAlterado():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Não existe Grupo Econômico com nome fornecido.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
 
         camposDesejados = 'gec_identificador'
         condicao = "WHERE gec_nome = '" + novonome + "'"
@@ -550,13 +581,13 @@ def organizacaoAlterado():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Já existe Grupo Econômico com novo nome fornecido.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
         # altera
-        comando = "gec_nome = '" + novonome + "'"
-        condicao = "WHERE gec_nome = '" + nome +"'"
+        comando = "gec_nome = '" + novonome + "', gec_identificadoratualizacao = " + str(atual_usuario) + ", gec_dataatualizacao = '" + atual_data + "'"
+        condicao = "WHERE gec_nome = '" + nome + "'"
         dados, retorno, mensagemRetorno = acessoBanco.alteraDado('gec_grupoeconomico', comando, condicao)
         if retorno != 200:
             resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
@@ -584,10 +615,10 @@ def organizacaoAlterado():
                 listaMensagem = {}
                 listaMensagem['acesso'] = 'nok'
                 listaMensagem['texto'] = 'Não existe Grupo Econômico com nome fornecido.'
-                resultadoFinal = acessoBanco.montaRetorno(200, '')
+                resultadoFinal = acessoBanco.montaRetorno(400, '')
                 resultadoFinal['retorno'] = listaMensagem
                 resultadoFinal['aresposta']['texto'] = ' '
-                return resultadoFinal, 200, header
+                return resultadoFinal, 400, header
             gec_identificador = dados[0]['gec_identificador']
             comando_gec = ", gec_identificador = " + str(gec_identificador)
 
@@ -603,10 +634,10 @@ def organizacaoAlterado():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Companhia inexistente.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
         cia_identificador = dados[0]['cia_identificador']
 
         # verifica se o novo nome existe
@@ -623,28 +654,36 @@ def organizacaoAlterado():
                 listaMensagem = {}
                 listaMensagem['acesso'] = 'nok'
                 listaMensagem['texto'] = 'Novo nome para Companhia já existente.'
-                resultadoFinal = acessoBanco.montaRetorno(200, '')
+                resultadoFinal = acessoBanco.montaRetorno(400, '')
                 resultadoFinal['retorno'] = listaMensagem
                 resultadoFinal['aresposta']['texto'] = ' '
-                return resultadoFinal, 200, header
+                return resultadoFinal, 400, header
             comando_novonome = ", cia_nome = '" + novonome + "'"
 
         # altera companhia
+        tabela = []
+        comandoNecessario =[]
+        condicaoNecessaria = []
+        altera = False
         comando = comando_novonome
         if len(comando) > 4:
             comando = comando[1:]
             condicao = "WHERE cia_nome = '" + nome + "'"
-            dados, retorno, mensagemRetorno = acessoBanco.alteraDado('cia_companhia', comando, condicao)
-            if retorno != 200:
-                resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-                return resultadoFinal, retorno, header
-
+            tabela.append('cia_companhia')
+            comandoNecessario.append(comando)
+            condicaoNecessaria.append(condicao)
+            altera = True
         # altera relacao com grupo economico
         comando = comando_gec
         if len(comando) > 4:
-            comando = comando[1:]
+            comando = comando[1:] + ", cia_identificadoratualizacao = " + str(atual_usuario) + ", cia_dataatualizacao = '" + atual_data + "'"
             condicao = "WHERE cia_identificador = " + str(cia_identificador)
-            dados, retorno, mensagemRetorno = acessoBanco.alteraDado('gec_cia_grupoeconomico_companhia', comando, condicao)
+            tabela.append('gec_cia_grupoeconomico_companhia')
+            comandoNecessario.append(comando)
+            condicaoNecessaria.append(condicao)
+            altera = True
+        if altera:
+            dados, retorno, mensagemRetorno = acessoBanco.alteraDadoMultiplo(tabela, comandoNecessario, condicaoNecessaria)
             if retorno != 200:
                 resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
                 return resultadoFinal, retorno, header
@@ -657,6 +696,7 @@ def organizacaoAlterado():
         return resposta, 200, header
 
     elif nivel == "empreendimento":
+        print ('empreendimento')
         comando_companhia = ''
         if superior is not None:
             #verifica se existe companhia com o nome indicado
@@ -671,10 +711,10 @@ def organizacaoAlterado():
                 listaMensagem = {}
                 listaMensagem['acesso'] = 'nok'
                 listaMensagem['texto'] = 'Não existe Companhia com nome fornecido.'
-                resultadoFinal = acessoBanco.montaRetorno(200, '')
+                resultadoFinal = acessoBanco.montaRetorno(400, '')
                 resultadoFinal['retorno'] = listaMensagem
                 resultadoFinal['aresposta']['texto'] = ' '
-                return resultadoFinal, 200, header
+                return resultadoFinal, 400, header
             cia_identificador = dados[0]['cia_identificador']
             comando_companhia = ", cia_identificador = " + str(cia_identificador)
 
@@ -684,23 +724,22 @@ def organizacaoAlterado():
                 listaMensagem = {}
                 listaMensagem['acesso'] = 'nok'
                 listaMensagem['texto'] = 'Tipo do Empreendimento Inválido'
-                resultadoFinal = acessoBanco.montaRetorno(200, '')
+                resultadoFinal = acessoBanco.montaRetorno(400, '')
                 resultadoFinal['retorno'] = listaMensagem
                 resultadoFinal['aresposta']['texto'] = ' '
-                return resultadoFinal, 200, header
+                return resultadoFinal, 400, header
             else:
                 comando_tipo = ", emp_tipo = '" + tipo + "'"
 
-        comando_pae = ''
         if pae is not None:
             if pae not in ('S','N'):
                 listaMensagem = {}
                 listaMensagem['acesso'] = 'nok'
                 listaMensagem['texto'] = 'Ativação de PAE Invalido'
-                resultadoFinal = acessoBanco.montaRetorno(200, '')
+                resultadoFinal = acessoBanco.montaRetorno(400, '')
                 resultadoFinal['retorno'] = listaMensagem
                 resultadoFinal['aresposta']['texto'] = ' '
-                return resultadoFinal, 200, header
+                return resultadoFinal, 400, header
 
         # realiza consulta no banco - empreendimento
         condicao = "WHERE emp_nome = '" + nome + "'"
@@ -714,10 +753,10 @@ def organizacaoAlterado():
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
             listaMensagem['texto'] = 'Empreendimento inexistente.'
-            resultadoFinal = acessoBanco.montaRetorno(200, '')
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
             resultadoFinal['retorno'] = listaMensagem
             resultadoFinal['aresposta']['texto'] = ' '
-            return resultadoFinal, 200, header
+            return resultadoFinal, 400, header
         emp_identificador = dados[0]['emp_identificador']
 
         # verifica se o novo nome existe
@@ -734,21 +773,104 @@ def organizacaoAlterado():
                 listaMensagem = {}
                 listaMensagem['acesso'] = 'nok'
                 listaMensagem['texto'] = 'Novo nome para Empreendimento já existente.'
-                resultadoFinal = acessoBanco.montaRetorno(200, '')
+                resultadoFinal = acessoBanco.montaRetorno(400, '')
                 resultadoFinal['retorno'] = listaMensagem
                 resultadoFinal['aresposta']['texto'] = ' '
-                return resultadoFinal, 200, header
+                return resultadoFinal, 400, header
             comando_novonome = ", emp_nome = '" + novonome + "'"
 
+        # verifica se a nova sigla existe
+        comando_novasigla = ''
+        if sigla is not None:
+            condicao = "WHERE emp_sigla = '" + sigla + "'"
+            camposDesejados = 'emp_identificador'
+            dados, retorno, mensagemRetorno = acessoBanco.dado('emp_empreendimento', condicao, camposDesejados, None)
+            if retorno != 200:
+                resultado = []
+                return resultado, retorno, header
+
+            if dados != []:
+                listaMensagem = {}
+                listaMensagem['acesso'] = 'nok'
+                listaMensagem['texto'] = 'Nova sigla para Empreendimento já existente.'
+                resultadoFinal = acessoBanco.montaRetorno(400, '')
+                resultadoFinal['retorno'] = listaMensagem
+                resultadoFinal['aresposta']['texto'] = ' '
+                return resultadoFinal, 400, header
+            comando_novasigla = ", emp_sigla = '" + sigla + "'"
+
         # altera
-        comando = comando_tipo + comando_companhia + comando_novonome
+        tabela = []
+        comandoNecessario =[]
+        condicaoNecessaria = []
+        altera = False
+
+        comando = comando_tipo + comando_companhia + comando_novonome + comando_novasigla
+        print ('comando ******',comando)
+
         if len(comando) > 4:
-            comando = comando[1:]
-            condicao = "WHERE emp_nome = '" + nome +"'"
-            dados, retorno, mensagemRetorno = acessoBanco.alteraDado('emp_empreendimento', comando, condicao)
+            comando = comando[1:] + ", emp_identificadoratualizacao = " + str(atual_usuario) + ", emp_dataatualizacao = '" + atual_data + "'"
+            condicao = "WHERE emp_nome = '" + nome + "'"
+            linha = "UPDATE emp_empreendimento SET " + comando + " " + condicao
+            comandoNecessario.append(linha)
+            altera = True
+
+        if pae is not None:
+            #verifica se existe pae com o nome indicado
+            condicao = "WHERE emp_identificador = " + str(emp_identificador)
+            camposDesejados = 'pae_identificador'
+            dados, retorno, mensagemRetorno = acessoBanco.dado('pae_planoacaoemergencia', condicao, camposDesejados, None)
+            print(dados)
+            if retorno != 200:
+                resultado = []
+                return resultado, retorno, header
+            if dados == []:
+                existePae = False
+            else:
+                existePae = True
+                pae_identificador = dados[0]['pae_identificador']
+
+            if pae == 'S':
+                if not existePae:
+                    campo = 'max(pae_identificador)'
+                    dados, retorno, mensagemRetorno = acessoBanco.leDado('pae_planoacaoemergencia', None, campo)
+                    if retorno != 200:
+                        resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
+                        return resultadoFinal, retorno, header
+
+                    if dados == []:
+                        proximoNumero = 1
+                    else:
+                        proximoNumero = dados[0][0] + 1
+
+                    texto_pae = "PAE - " + sigla
+                    linha = "INSERT INTO pae_planoacaoemergencia "
+                    linha = linha + "(pae_identificador, emp_identificador, pae_texto, pae_identificadoratualizacao, pae_dataatualizacao) VALUES ("
+                    linha = linha + str(proximoNumero) + "," + str(emp_identificador) + ",'" + texto_pae + "'," + str(atual_usuario) + ",'" + atual_data + "')"
+                    comandoNecessario.append(linha)
+                    altera = True
+            elif pae == 'N':
+                if existePae:
+                    linha = "DELETE FROM pae_planoacaoemergencia WHERE pae_identificador = " + str(pae_identificador)
+                    comandoNecessario.append(linha)
+                    altera = True
+
+        print ('altera *** ', altera)
+        print (comandoNecessario)
+        if altera:
+            dados, retorno, mensagemRetorno = acessoBanco.executaDadoMultiplo(comandoNecessario)
             if retorno != 200:
                 resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
                 return resultadoFinal, retorno, header
+        else:
+            listaMensagem = {}
+            listaMensagem['acesso'] = 'nok'
+            listaMensagem['texto'] = 'Nada a ser alterado.'
+            resultadoFinal = acessoBanco.montaRetorno(400, '')
+            resultadoFinal['retorno'] = listaMensagem
+            resultadoFinal['aresposta']['texto'] = ' '
+            return resultadoFinal, 400, header
+
 
         empAlterado = {}
         empAlterado['emp_nome'] = nome
@@ -761,10 +883,10 @@ def organizacaoAlterado():
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Nivel ' + nivel + ' é inválido.'
-        resultadoFinal = acessoBanco.montaRetorno(200, '')
+        resultadoFinal = acessoBanco.montaRetorno(400, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 200, header
+        return resultadoFinal, 400, header
 
 def montaGrupo(condicao, resultado, propagaFilho):
     # realiza consulta no banco - grupo economico

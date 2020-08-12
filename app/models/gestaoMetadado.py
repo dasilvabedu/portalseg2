@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 
 from ..views import acessoBanco
+from ..models import gestaoAutenticacao
 from flask import request
+import datetime
 
 def metadadoAptoExclusao ():
     camposDesejados = 'mtt_identificador,mtt_tabela,mtt_descricao'
@@ -18,6 +20,16 @@ def metadadoAptoExclusao ():
     return resultado, retorno
 
 def metadadoTotal ():
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
+
+    codificado, volta = gestaoAutenticacao.expandeToken()
+    atual_usuario = volta['sub']
+    atual_data = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
     query_parameters = request.args
     camposDesejados = query_parameters.get('campos')
     tipoTabela = query_parameters.get('mtt_tipo')
@@ -41,7 +53,7 @@ def metadadoTotal ():
         resultado['aresposta']['texto'] = ''
         resultado['cabecalho'] = metadado
 
-    return resultado, retorno
+    return resultado, retorno, header
 
 def metadadoSelecionado():
     query_parameters = request.args
@@ -59,6 +71,11 @@ def metadadoSelecionado():
     return resultadoFinal, retorno
 
 def metadadoQualificado():
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
     query_parameters = request.args
     mtt_identificador = query_parameters.get('mtt_identificador')
     mtt_tabela = query_parameters.get('mtt_tabela')

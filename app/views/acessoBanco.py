@@ -76,7 +76,7 @@ def dado(tabela, condicao=None, camposDesejados=None, limite = None):
         if limite is not None:
             comando = comando + ' LIMIT ' + str(limite)
         resultado = []
-
+        print(comando)
         cur.execute(comando)
         recset = cur.fetchall()
         for rec in recset:
@@ -126,6 +126,43 @@ def alteraDado(tabela, valores, condicao=None):
         return resultado, 200, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
+        return [], 404, 'Erro do sistema: ' + str(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
+def alteraDadoMultiplo(tabela, valores, condicao=None):
+    """ Atualiza uma tabela  no Postgress """
+    conn = None
+
+    try:
+    # conecta ao servidor PostgreSQL - Google cloud
+        conn = psycopg2.connect(database_url)
+
+    # conecta ao servidor PostgreSQL - Heroku
+        #conn = psycopg2.connect(database_url, sslmode='require')
+
+        if conn is None:
+            return [], 404, "Conexão ao banco falhou"
+    # criacao de cursor
+        cur = conn.cursor()
+
+    # execucao de comando
+        resultado = []
+        for i in range(len(tabela)):
+            comando = "UPDATE " + tabela[i] + " SET " + valores[i]
+            if condicao[i] is not None:
+                comando = comando + " " + condicao[i]
+            cur.execute(comando)
+        conn.commit()
+
+    # encerra conexao ao PostgreSQL
+        cur.close()
+        return resultado, 200, ''
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.roolback()
+        cur.close()
         return [], 404, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
@@ -208,6 +245,41 @@ def insereDado(tabela, camposDesejados=None, valores=None):
         if conn is not None:
             conn.close()
 
+def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
+    """ Atualiza várias tabela  no Postgress """
+    conn = None
+    try:
+    # conecta ao servidor PostgreSQL - Google cloud
+        conn = psycopg2.connect(database_url)
+
+    # conecta ao servidor PostgreSQL - Heroku
+        #conn = psycopg2.connect(database_url, sslmode='require')
+
+        if conn is None:
+            return [], 404, "Conexão ao banco falhou"
+    # criacao de cursor
+        cur = conn.cursor()
+
+    # execucao de comando
+        resultado = []
+        for i in range (len(tabela)):
+            comando = "INSERT INTO " + tabela[i] + " (" + camposDesejados[i] + ") values (" + valores[i] + ")"
+            cur.execute(comando)
+        conn.commit()
+
+    # encerra conexao ao PostgreSQL
+        cur.close()
+        return resultado, 201, ''
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.roolback()
+        cur.close()
+        return [], 404, 'Erro do sistema: ' + str(error)
+
+    finally:
+        if conn is not None:
+            conn.close()
+
 def exclueDado(tabela, condicao):
     """ Deleta registro de uma tabela  no Postgress """
     conn = None
@@ -238,6 +310,80 @@ def exclueDado(tabela, condicao):
         return resultado, 200, ""
 
     except (Exception, psycopg2.DatabaseError) as error:
+        return [], 404, 'Erro do sistema: ' + str(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
+def exclueDadoMultiplo(tabela, condicao):
+    """ Deleta registro de uma tabela  no Postgress """
+    conn = None
+    print (tabela)
+    print (condicao)
+    try:
+    # conecta ao servidor PostgreSQL - Google cloud
+        conn = psycopg2.connect(database_url)
+
+    # conecta ao servidor PostgreSQL - Heroku
+        #conn = psycopg2.connect(database_url, sslmode='require')
+
+        if conn is None:
+            return [], 404, "Conexão ao banco falhou"
+    # criacao de cursor
+        cur = conn.cursor()
+
+    # execucao de comando
+        resultado = []
+        for i in range(len(tabela)):
+            comando = "DELETE FROM " + tabela[i]
+            if condicao[i] is not None:
+                comando = comando + ' ' + condicao[i]
+            cur.execute(comando)
+        conn.commit()
+
+    # encerra conexao ao PostgreSQL
+        cur.close()
+        return resultado, 200, ""
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.roolback()
+        cur.close()
+        return [], 404, 'Erro do sistema: ' + str(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
+def executaDadoMultiplo(comando):
+    """ Deleta registro de uma tabela  no Postgress """
+    conn = None
+    print (comando)
+
+    try:
+    # conecta ao servidor PostgreSQL - Google cloud
+        conn = psycopg2.connect(database_url)
+
+    # conecta ao servidor PostgreSQL - Heroku
+        #conn = psycopg2.connect(database_url, sslmode='require')
+
+        if conn is None:
+            return [], 404, "Conexão ao banco falhou"
+    # criacao de cursor
+        cur = conn.cursor()
+
+    # execucao de comando
+        resultado = []
+        for i in range(len(comando)):
+            print (comando[i])
+            cur.execute(comando[i])
+        conn.commit()
+
+    # encerra conexao ao PostgreSQL
+        cur.close()
+        return resultado, 200, ""
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        conn.roolback()
+        cur.close()
         return [], 404, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
@@ -515,7 +661,7 @@ def leMetadado(mtt_identificador,mtt_tabela,camposDesejados, atributosDesejado):
 def montaRetorno(retorno, mensagemRetorno):
     mensagem = {}
     mensagem['codigo'] = retorno
-    mensagem['texto'] = 'Mensagem original: ' + mensagemRetorno
+    mensagem['texto'] = mensagemRetorno
     if retorno == 200:
         mensagem['mensagem'] = 'Requisicao plenamente atendida'
     elif retorno == 201:
@@ -668,7 +814,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
         return resultado, 201, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        conn.rollback()
+        conn.roolback()
         conn.close()
         return [], 404, 'Erro do sistema: ' + str(error)
     finally:

@@ -20,25 +20,25 @@ def api_metadado_aptoexclusao():
     resultado, retorno = gestaoMetadado.metadadoAptoExclusao()
     return jsonify(resultado), retorno
 
-@app.route('/seguranca_barragem/metadado/atualizado', methods=['GET','POST'])
+@app.route('/seguranca_barragem/metadado/atualizado', methods=['POST'])
 def api_metadado_atualizado():
     resultado, retorno = gestaoMetadado.metadadoAtualizado()
     return jsonify(resultado), retorno
 
-@app.route('/seguranca_barragem/metadado/excluido', methods=['GET','DELETE'])
+@app.route('/seguranca_barragem/metadado/excluido', methods=['DELETE'])
 def api_metadado_excluido():
     resultado, retorno = gestaoMetadado.metadadoExcluido()
     return jsonify(resultado), retorno
 
-@app.route('/seguranca_barragem/metadado/inserido', methods=['GET','POST'])
+@app.route('/seguranca_barragem/metadado/inserido', methods=['POST'])
 def api_metadado_inserido():
     resultado, retorno = gestaoMetadado.metadadoInserido()
     return jsonify(resultado), retorno
 
 @app.route('/seguranca_barragem/metadado/qualificado', methods=['GET'])
 def api_metadado_qualificado():
-    resultado, retorno = gestaoMetadado.metadadoQualificado()
-    return jsonify(resultado), retorno
+    resultado, retorno, header = gestaoMetadado.metadadoQualificado()
+    return jsonify(resultado), retorno, header
 
 @app.route('/seguranca_barragem/metadado/selecionado', methods=['GET'])
 def api_metadado_selecionado():
@@ -47,8 +47,8 @@ def api_metadado_selecionado():
 
 @app.route('/seguranca_barragem/metadado/total', methods=['GET'])
 def api_metadado_total():
-    resultado, retorno = gestaoMetadado.metadadoTotal()
-    return jsonify(resultado), retorno
+    resultado, retorno, header = gestaoMetadado.metadadoTotal()
+    return jsonify(resultado), retorno, header
 
 @app.route('/seguranca_barragem/metadado/validado', methods=['GET'])
 def api_metadado_validado():
