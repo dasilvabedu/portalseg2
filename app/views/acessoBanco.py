@@ -30,15 +30,12 @@ def chatterbot(pergunta):
     return resposta
 
 def dado(tabela, condicao=None, camposDesejados=None, limite = None):
-    """ Lê uma tabela completa no Postgress """
+
     conn = None
 
     try:
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -98,15 +95,12 @@ def dado(tabela, condicao=None, camposDesejados=None, limite = None):
             conn.close()
 
 def alteraDado(tabela, valores, condicao=None):
-    """ Atualiza uma tabela  no Postgress """
+
     conn = None
 
     try:
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -118,6 +112,7 @@ def alteraDado(tabela, valores, condicao=None):
         if condicao is not None:
             comando = comando + " " + condicao
         resultado = []
+        print(comando)
         cur.execute(comando)
         conn.commit()
 
@@ -132,15 +127,12 @@ def alteraDado(tabela, valores, condicao=None):
             conn.close()
 
 def alteraDadoMultiplo(tabela, valores, condicao=None):
-    """ Atualiza uma tabela  no Postgress """
+
     conn = None
 
     try:
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -169,7 +161,7 @@ def alteraDadoMultiplo(tabela, valores, condicao=None):
             conn.close()
 
 def leDado(tabela, condicao=None, camposDesejados=None):
-    """ Lê uma tabela completa no Postgress """
+
     conn = None
 
     try:
@@ -214,14 +206,11 @@ def leDado(tabela, condicao=None, camposDesejados=None):
             conn.close()
 
 def insereDado(tabela, camposDesejados=None, valores=None):
-    """ Atualiza uma tabela  no Postgress """
+
     conn = None
     try:
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -246,14 +235,12 @@ def insereDado(tabela, camposDesejados=None, valores=None):
             conn.close()
 
 def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
-    """ Atualiza várias tabela  no Postgress """
+
     conn = None
     try:
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
 
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -281,27 +268,37 @@ def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
             conn.close()
 
 def exclueDado(tabela, condicao):
-    """ Deleta registro de uma tabela  no Postgress """
+
     conn = None
 
     try:
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
+    # verifica se o registro existe
+        comando = 'SELECT * FROM ' + tabela
+        if condicao is not None:
+            comando = comando + ' ' + condicao
+        resultado = []
+        print (comando)
+        cur.execute(comando)
+        recset = cur.fetchall()
+        for rec in recset:
+            resultado.append(rec)
+        if resultado == []:
+            return [], 400, 'Tabela e/ou identificador inexistentes'
+
     # execucao de comando
         comando = "DELETE FROM " + tabela
         if condicao is not None:
             comando = comando + ' ' + condicao
         resultado = []
-
+        print (comando)
         cur.execute(comando)
         conn.commit()
 
@@ -316,16 +313,13 @@ def exclueDado(tabela, condicao):
             conn.close()
 
 def exclueDadoMultiplo(tabela, condicao):
-    """ Deleta registro de uma tabela  no Postgress """
+
     conn = None
     print (tabela)
     print (condicao)
     try:
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -436,16 +430,13 @@ def exclueMetadado(tabela):
         if conn is not None:
             conn.close()
 
-def insereMetadado(tabela):
-    """ Lê uma tabela completa no Postgress """
+def insereMetadado(tabela, atual_data, atual_usuario):
+
     conn = None
 
     try:
     # conecta ao servidor PostgreSQL - Google cloud
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -483,15 +474,18 @@ def insereMetadado(tabela):
         atualNumeroAtributo = cur.fetchone()[0]
 
     # insere o registro em mtt_metadadotabela
-        comando = "INSERT INTO mtt_metadadotabela (mtt_identificador, mtt_tabela, mtt_tipo) values (" + str(proximoNumeroMetadado) + ",'" + \
-                  tabela + "','" + tipoTabela + "')"
+        campos = " (mtt_identificador, mtt_tabela, mtt_tipo, mtt_identificadoratualizacao, mtt_dataatualizacao)"
+        valores = " values (" + str(proximoNumeroMetadado) + ",'" + tabela + "','" + tipoTabela + "'," + str(atual_usuario) + ",'" + atual_data + "')"
+        comando = "INSERT INTO mtt_metadadotabela" + campos + valores
         cur.execute(comando)
 
     # insere os registro em mta_metadadoatributo
         for dados in dadosAtributo:
             atualNumeroAtributo = atualNumeroAtributo + 1
-            comando = "INSERT INTO mta_metadadoatributo (mtt_identificador, mta_identificador, mta_atributo, mta_sequencia, mta_tipo, mta_editavel) values (" + \
-                      str(proximoNumeroMetadado) + "," + str(atualNumeroAtributo) + ",'" + dados[0] + "'," + str(dados[1]) +  ",'"+ dados[2] +"','não')"
+            campos = " (mtt_identificador, mta_identificador, mta_atributo, mta_sequencia, mta_tipo, mta_editavel, mta_identificadoratualizacao, mta_dataatualizacao)"
+            valores = " values (" + str(proximoNumeroMetadado) + "," + str(atualNumeroAtributo) + ",'" + dados[0] + "'," + str(dados[1]) +  ",'"+ dados[2] +"','não'," + str(
+                atual_usuario) + ",'" + atual_data + "')"
+            comando = "INSERT INTO mta_metadadoatributo" + campos + valores
             cur.execute(comando)
         conn.commit()
 
@@ -514,16 +508,13 @@ def insereMetadado(tabela):
             conn.close()
 
 def exclueMetadadoAtributo(lista):
-    """ Lê uma tabela completa no Postgress """
+
     conn = None
 
     try:
 
-    # conecta ao servidor PostgreSQL - Google cloud
+    # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-    # conecta ao servidor PostgreSQL - Heroku
-        #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
@@ -562,27 +553,25 @@ def exclueMetadadoAtributo(lista):
         if conn is not None:
             conn.close()
 
-def insereMetadadoAtributo(lista):
-    """ Lê uma tabela completa no Postgress """
+def insereMetadadoAtributo(lista, atual_data, atual_usuario):
+
     conn = None
     try:
 
-        # conecta ao servidor PostgreSQL - Google cloud
+        # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
-
-        # conecta ao servidor PostgreSQL - Heroku
-        # conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
             return [], 404, "Conexão ao banco falhou"
 
         # criacao de cursor
         cur = conn.cursor()
-
+        print ("lista --- ", lista)
         for k in lista:
             tabela = k.split("###")[0]
             atributo = k.split("###")[1]
-
+            print ("tabela -- ", tabela)
+            print ("atributo -- ", atributo)
             # recupera os dados da tabela
             colunas = "SELECT column_name, ordinal_position, data_type FROM information_schema.columns WHERE table_name = '" + tabela + "' AND column_name = '" + atributo + "'"
             cur.execute(colunas)
@@ -611,11 +600,14 @@ def insereMetadadoAtributo(lista):
             cur.execute(comandoAtributo)
             atualNumeroAtributo = cur.fetchone()[0]
             # insere os registro em mta_metadadoatributo
+            print(dadosAtributo)
             for dados in dadosAtributo:
                 atualNumeroAtributo = atualNumeroAtributo + 1
-                comando = "INSERT INTO mta_metadadoatributo (mtt_identificador, mta_identificador, mta_atributo, mta_sequencia, mta_tipo, mta_editavel) values (" + \
-                          str(mtt_identificador) + "," + str(atualNumeroAtributo) + ",'" + dados[0] + "'," + str(
-                    dados[1]) + ",'" + dados[2] + "','não')"
+                campos = " (mtt_identificador, mta_identificador, mta_atributo, mta_sequencia, mta_tipo, mta_editavel, mta_identificadoratualizacao, mta_dataatualizacao)"
+                valores = " values (" + str(mtt_identificador) + "," + str(atualNumeroAtributo) + ",'" + dados[0] + "'," + str(dados[1]) + ",'" + dados[2] + "','não'," + \
+                          str(atual_usuario) + ",'" + atual_data + "')"
+                comando = "INSERT INTO mta_metadadoatributo" + campos + valores
+                print(comando)
                 cur.execute(comando)
         conn.commit()
 
@@ -700,9 +692,8 @@ def ordenaDicionario(atributoCampos, resultadoDado):
         resultadoMontado.append(registro)
     return resultadoMontado
 
-# inclusao inicial de usuario
 def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
-    """ Insere usuário e perfil inicial no Postgress """
+
     conn = None
     try:
 
@@ -822,7 +813,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
             conn.close()
 
 def exclueUsuario(usu_identificador):
-    """ Deleta usuário e perfis iniciais no Postgress """
+
     conn = None
     try:
 

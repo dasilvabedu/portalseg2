@@ -6,6 +6,11 @@ from flask import request
 import datetime
 
 def metadadoAptoExclusao ():
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
     camposDesejados = 'mtt_identificador,mtt_tabela,mtt_descricao'
     metadado, retorno, mensagemRetorno = acessoBanco.dado('mtt_metadadotabela', None, camposDesejados, None)
     resultado = acessoBanco.montaRetorno(retorno, mensagemRetorno)
@@ -17,7 +22,7 @@ def metadadoAptoExclusao ():
         resultado['aresposta']['texto'] = ''
         resultado['cabecalho'] = metadadoResumido
 
-    return resultado, retorno
+    return resultado, retorno, header
 
 def metadadoTotal ():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
@@ -56,6 +61,11 @@ def metadadoTotal ():
     return resultado, retorno, header
 
 def metadadoSelecionado():
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
     query_parameters = request.args
     mtt_identificador = query_parameters.get('mtt_identificador')
     mtt_tabela = query_parameters.get('mtt_tabela')
@@ -64,11 +74,11 @@ def metadadoSelecionado():
     resultadoTabela, resultadoAtributo, retorno, mensagemRetorno = acessoBanco.leMetadado(mtt_identificador, mtt_tabela, camposDesejados, None)
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
     if retorno != 200:
-        return resultadoFinal, retorno
+        return resultadoFinal, retorno, header
 
     resultadoFinal['aresposta']['texto'] = ''
     resultadoFinal['cabecalho'] = resultadoTabela[0]
-    return resultadoFinal, retorno
+    return resultadoFinal, retorno, header
 
 def metadadoQualificado():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
@@ -83,17 +93,17 @@ def metadadoQualificado():
     if mtt_identificador is None and mtt_tabela is None:
         resultadoFinal = acessoBanco.montaRetorno(400, 'Parâmetros inválidos')
         resultadoFinal['aresposta']['texto'] = ''
-        return resultadoFinal, 400
+        return resultadoFinal, 400, header
 
     resultadoTabela, resultadoAtributo, retorno, mensagemRetorno = acessoBanco.leMetadado(mtt_identificador, mtt_tabela, None, 'Sim')
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
     if retorno != 200:
-        return resultadoFinal, retorno
+        return resultadoFinal, retorno, header
 
     resultadoFinal['aresposta']['texto'] = ''
     resultadoFinal['cabecalho'] = resultadoTabela[0]
     resultadoFinal['campos'] = resultadoAtributo
-    return resultadoFinal, retorno
+    return resultadoFinal, retorno, header
 
 def metadadoInserido():
     query_parameters = request.args
@@ -133,26 +143,78 @@ def metadadoExcluido():
     return resultadoFinal, retorno
 
 def metadadoAtualizado():
-    if not request.json:
-        resposta = acessoBanco.montaRetorno(400, 'Argumento não é dado JSON')
-        return resposta, 400
-    entrada = request.json
-    resposta = acessoBanco.montaRetorno(200, 'Era JSON')
-    return resposta, 200
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
+    codificado, volta = gestaoAutenticacao.expandeToken()
+    atual_usuario = volta['sub']
+    atual_data = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
+
+    try:
+        if not request.json:
+            resposta = acessoBanco.montaRetorno(400, 'Argumento não é dado JSON')
+            return resposta, 400
+        dados = request.json
+
+        mtt_tabela = dados['tabela']
+        prefixo = mtt_tabela[0:4]
+
+        resultadoTabela, resultadoAtributo, retorno, mensagemRetorno = acessoBanco.leMetadado(None, mtt_tabela, None,
+                                                                                              'Sim')
+        tipo = {}
+        for i in range(len(resultadoAtributo)):
+            mta_atributo = resultadoAtributo[i]['mta_atributo']
+            mta_tipo = resultadoAtributo[i]['mta_tipo']
+            tipo[mta_atributo] = mta_tipo
+
+        comando = ''
+        for j in dados.keys():
+            identificador = prefixo + "identificador"
+            if not (j == 'tabela' or j == identificador):
+                if tipo[j] == 'text':
+                    comando = comando + "," + j + " = '" + dados[j] + "'"
+                else:
+                    comando = comando + "," + j + " = " + str(dados[j])
+
+        comando = comando[1:]
+        condicao = "WHERE " + identificador + " = " + str(dados[identificador])
+
+        dadosAlterado, retorno, mensagemRetorno = acessoBanco.alteraDado(mtt_tabela, comando, condicao)
+        if retorno != 200:
+            resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
+            return resultadoFinal, retorno
+
+        resposta = acessoBanco.montaRetorno(200, 'Requisicao plenamente atendida')
+        return resposta, 200
+    except:
+        resposta = acessoBanco.montaRetorno(400, 'Erro interno. Possivelmente tabela ou campo inválido(s)')
+        return resposta, 200
 
 def metadadoValidado():
     # recupera tabelas do banco que sejam do modelo de dados do sistema
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        resultadoFinal = acessoBanco.montaRetorno(400, mensagem['message'])
+        return resultadoFinal, 400, header
+
+    codificado, volta = gestaoAutenticacao.expandeToken()
+    atual_usuario = volta['sub']
+    atual_data = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+
     camposDesejados = ('table_name')
     query = "WHERE table_schema='public' AND table_type='BASE TABLE'"
     tabelas, retorno, mensagemRetorno = acessoBanco.dado('information_schema.tables', query, camposDesejados, None)
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
     if retorno != 200:
-        return resultadoFinal, retorno
-
+        return resultadoFinal, retorno, header
+    print (tabelas)
     relacaoTabelas = "('"
     listaTabelas = []
     for k in range(len(tabelas)):
-        if tabelas[k]['table_name'][3] == '_':
+        if len(tabelas[k]['table_name']) > 4 and tabelas[k]['table_name'][3] == '_':
             relacaoTabelas = relacaoTabelas + tabelas[k]['table_name'] + "','"
             listaTabelas.append(tabelas[k]['table_name'])
     relacaoTabelas = relacaoTabelas[0:-2] + ')'
@@ -163,20 +225,20 @@ def metadadoValidado():
     aApagar, retorno, mensagemRetorno = acessoBanco.dado('mtt_metadadotabela', condicao, camposDesejados, None)
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
     if retorno != 200:
-        return resultadoFinal, retorno
+        return resultadoFinal, retorno, header
 
     if aApagar != []:
         for k in range(len(aApagar)):
             apagados, retorno, mensagemRetorno = acessoBanco.exclueMetadado(aApagar[k]['mtt_tabela'])
             if retorno != 200:
-                return resultadoFinal, retorno
+                return resultadoFinal, retorno, header
 
     # verificar tabelas que devem ser inseridas em metadados
     camposDesejados = ('mtt_tabela')
     metadados, retorno, mensagemRetorno = acessoBanco.dado('mtt_metadadotabela', None, camposDesejados, None)
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
     if retorno != 200:
-        return resultadoFinal, retorno
+        return resultadoFinal, retorno, header
     listaMetadados = []
     for k in range(len(metadados)):
         listaMetadados.append(metadados[k]['mtt_tabela'])
@@ -184,7 +246,7 @@ def metadadoValidado():
     diferenca = []
     for k in range(len(listaTabelas)):
         if listaTabelas[k] not in listaMetadados:
-            inseridos, retorno, mensagemRetorno = acessoBanco.insereMetadado(listaTabelas[k])
+            inseridos, retorno, mensagemRetorno = acessoBanco.insereMetadado(listaTabelas[k], atual_data, atual_usuario)
             diferenca.append(listaTabelas[k])
 
 #   valida tabelas de atributos
@@ -192,7 +254,7 @@ def metadadoValidado():
     metadados, retorno, mensagemRetorno = acessoBanco.dado('mtt_metadadotabela', None, camposDesejados, None)
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
     if retorno != 200:
-        return resultadoFinal, retorno
+        return resultadoFinal, retorno, header
 
     camposInformation = 'column_name'
     camposMetadados = 'mta_atributo'
@@ -200,21 +262,23 @@ def metadadoValidado():
     atributosIncluir = []
 
     for k in range(len(metadados)):
+        print("Tabela -- ", metadados[k])
         listaInformation = []
         listaAtributos = []
         condicao = "WHERE table_name = '" + metadados[k]['mtt_tabela'] + "'"
         information, retorno, mensagemRetorno = acessoBanco.dado('information_schema.columns', condicao, camposInformation, None)
         resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
         if retorno != 200:
-            return resultadoFinal, retorno
+            return resultadoFinal, retorno, header
         for j in range(len(information)):
             listaInformation.append(metadados[k]['mtt_tabela']+'###'+information[j]['column_name'])
-
+        print(listaInformation)
         condicao = "WHERE mtt_identificador = " + str(metadados[k]['mtt_identificador'])
         atributos, retorno, mensagemRetorno = acessoBanco.dado('mta_metadadoatributo', condicao, camposMetadados, None)
         resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
         if retorno != 200:
-            return resultadoFinal, retorno
+            return resultadoFinal, retorno, header
+        print(atributos)
         for j in range(len(atributos)):
             pesquisa = metadados[k]['mtt_tabela']+'###'+atributos[j]['mta_atributo']
             listaAtributos.append(pesquisa)
@@ -223,47 +287,25 @@ def metadadoValidado():
                 atributosApagar.append(pesquisa)
 
         for k in listaInformation:
+            print(k)
     # verifica atributos que devem ser incluidos
             if k not in listaAtributos:
                 atributosIncluir.append(k)
-
+    print("atributos a incluir --- ", atributosIncluir)
     if atributosIncluir != []:
-        atributos, retorno, mensagemRetorno = acessoBanco.insereMetadadoAtributo(atributosIncluir)
+        atributos, retorno, mensagemRetorno = acessoBanco.insereMetadadoAtributo(atributosIncluir, atual_data, atual_usuario)
         if retorno != 201:
-            return resultadoFinal, retorno
+            return resultadoFinal, retorno, header
 
     if atributosApagar != []:
         atributos, retorno, mensagemRetorno = acessoBanco.exclueMetadadoAtributo(atributosApagar)
         if retorno != 200:
-            return resultadoFinal, retorno
+            return resultadoFinal, retorno, header
 
     resultadoFinal['aresposta']['texto'] = ''
     resultadoFinal['cabecalho'] = listaTabelas
 
-    return resultadoFinal, 200, ''
+    return resultadoFinal, 200, '', header
 
-def metadadoAtributoValidado():
-    camposDesejados = ('mtt_tabela, mtt_identificador')
-    metadados, retorno, mensagemRetorno = acessoBanco.dado('mtt_metadadotabela', None, camposDesejados, None)
-    resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-    if retorno != 200:
-        return resultadoFinal, retorno
 
-    listaMetadados = []
-    for i in metadados:
-        listaMetadados.append(i['mtt_tabela'])
-
-    inexistente = []
-#    for dicionario in tabelas:
-#        tabela = dicionario['table_name']
-#        if tabela[3] == '_':
-#            if tabela not in listaMetadados:
-#                escolhido = {}
-#                escolhido['tabela'] = tabela
-#                inexistente.append(escolhido)
-
-    resultadoFinal['aresposta']['texto'] = ''
-    resultadoFinal['cabecalho'] = inexistente
-
-    return resultadoFinal, retorno
 

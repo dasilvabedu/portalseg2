@@ -55,7 +55,7 @@ def rotasOrdenadas(uhe):
             trecho_anterior.append(dadosTrecho[j][1])
             trecho_nome[dadosTrecho[j][0]] = dadosTrecho[j][2]
 
-        camposDesejados = 'rot_pns_rotaevacuacao_pontoseguranca.pns_identificador, pns_identificacao'
+        camposDesejados = 'rot_pns_rotaevacuacao_pontoseguranca.pns_identificador, pns_identificacao,ST_AsText(pns_pontoseguranca.geom), ST_AsText(ST_Transform(pns_pontoseguranca.geom,4326))'
         condicao = "INNER JOIN pns_pontoseguranca ON rot_pns_rotaevacuacao_pontoseguranca.pns_identificador = pns_pontoseguranca.pns_identificador WHERE rot_pns_rotaevacuacao_pontoseguranca.rot_identificador = " + str(dadosRota[i][0])
         dadosPonto, retorno, mensagemRetorno = acessoBanco.leDado('rot_pns_rotaevacuacao_pontoseguranca', condicao, camposDesejados)
 
@@ -67,9 +67,15 @@ def rotasOrdenadas(uhe):
         detalhePontos = {}
         detalhePontos['id_ponto'] = dadosPonto[0][0]
         detalhePontos['nome_ponto'] = dadosPonto[0][1]
+        x = dadosPonto[0][2].split(' ')[0][6:]
+        y = dadosPonto[0][2].split(' ')[1][:-1]
+        detalhePontos["x"] = x
+        detalhePontos["y"] = y
+        lat = dadosPonto[0][3].split(' ')[0][6:]
+        long = dadosPonto[0][3].split(' ')[1][:-1]
+        detalhePontos["lat"] = lat
+        detalhePontos["long"] = long
         mensagemRota["ponto_seguranca"] = detalhePontos
-
-
         sequencia = 0
         montaTrecho = []
 
@@ -98,11 +104,11 @@ def pontosUHE(uhe):
     usu_identificador = volta['sub']
 
     # verifica se existem pontos na área de interesse da UHE
-    camposDesejados = 'pni_identificador, pni_descricao, pni_endereco'
+    camposDesejados = 'pni_identificador, pni_descricao, pni_endereco, ST_AsText(pni_pontointeresse.geom), ST_AsText(ST_Transform(pni_pontointeresse.geom,4326))'
     condicao = "where ST_Within(pni_pontointeresse.geom, aoi_areainteresse.geom) and emp_identificador =  " + str(uhe)
     condicao = condicao + " and usu_identificador = " + str(usu_identificador)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
-
+    print(dadosPontos)
     if retorno == 404:
         return {"message": "Erro de acesso ao banco"}, 401, header
 
@@ -116,6 +122,14 @@ def pontosUHE(uhe):
         mensagemPontos["id"] = dadosPontos[i][0]
         mensagemPontos["nome"] = dadosPontos[i][1]
         mensagemPontos["endereco"] = dadosPontos[i][2]
+        x = dadosPontos[i][3].split(' ')[0][6:]
+        y = dadosPontos[i][3].split(' ')[1][:-1]
+        mensagemPontos["x"] = x
+        mensagemPontos["y"] = y
+        lat = dadosPontos[i][4].split(' ')[0][6:]
+        long = dadosPontos[i][4].split(' ')[1][:-1]
+        mensagemPontos["lat"] = lat
+        mensagemPontos["long"] = long
         dadosFinais.append(mensagemPontos)
 
     corpoMensagem = {}
@@ -132,7 +146,7 @@ def pontosUsuario():
 
     if request.method == 'GET':
     # verifica se existem pontos na área de interesse da UHE
-        camposDesejados = 'pni_identificador, pni_descricao, pni_endereco'
+        camposDesejados = 'pni_identificador, pni_descricao, pni_endereco,ST_AsText(pni_pontointeresse.geom), ST_AsText(ST_Transform(pni_pontointeresse.geom,4326))'
         condicao = "WHERE usu_identificador = " + str(usu_identificador)
         dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
 
@@ -149,6 +163,14 @@ def pontosUsuario():
             mensagemPontos["id"] = dadosPontos[i][0]
             mensagemPontos["nome"] = dadosPontos[i][1]
             mensagemPontos["endereco"] = dadosPontos[i][2]
+            x = dadosPontos[i][3].split(' ')[0][6:]
+            y = dadosPontos[i][3].split(' ')[1][:-1]
+            mensagemPontos["x"] = x
+            mensagemPontos["y"] = y
+            lat = dadosPontos[i][4].split(' ')[0][6:]
+            long = dadosPontos[i][4].split(' ')[1][:-1]
+            mensagemPontos["lat"] = lat
+            mensagemPontos["long"] = long
             dadosFinais.append(mensagemPontos)
 
         corpoMensagem = {}
@@ -157,10 +179,11 @@ def pontosUsuario():
 
     elif request.method == 'POST':
         entrada = request.json
+        print (entrada)
         pni_descricao = entrada.get('descricao')
         pni_endereco = entrada.get('endereco')
-        x = entrada.get('x')
-        y = entrada.get('y')
+        x = entrada.get('long')
+        y = entrada.get('lat')
         resultadoFinal, retorno = trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y)
         return resultadoFinal, retorno, header
 
@@ -173,7 +196,7 @@ def pontosAtual(id_ponto):
     usu_identificador = volta['sub']
 
     # verifica se o ponto existe
-    camposDesejados = 'pni_identificador, pni_descricao, pni_endereco'
+    camposDesejados = 'pni_identificador, pni_descricao, pni_endereco,ST_AsText(pni_pontointeresse.geom), ST_AsText(ST_Transform(pni_pontointeresse.geom,4326))'
     condicao = "where pni_identificador =  " + str(id_ponto) + " and usu_identificador = " + str(usu_identificador)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse', condicao, camposDesejados)
 
@@ -190,6 +213,14 @@ def pontosAtual(id_ponto):
         mensagemPontos["id"] = dadosPontos[0][0]
         mensagemPontos["descricao"] = dadosPontos[0][1]
         mensagemPontos["endereco"] = dadosPontos[0][2]
+        x = dadosPontos[0][3].split(' ')[0][6:]
+        y = dadosPontos[0][3].split(' ')[1][:-1]
+        mensagemPontos["x"] = x
+        mensagemPontos["y"] = y
+        lat = dadosPontos[0][4].split(' ')[0][6:]
+        long = dadosPontos[0][4].split(' ')[1][:-1]
+        mensagemPontos["lat"] = lat
+        mensagemPontos["long"] = long
         corpoMensagem = {}
         corpoMensagem['pontos'] = mensagemPontos
         return corpoMensagem, 200, header
@@ -245,7 +276,7 @@ def pontosUHEAnalise(uhe):
     usu_identificador = volta['sub']
 
     # verifica se existem pontos na área de interesse da UHE
-    camposDesejados = 'pni_identificador, pni_descricao, pni_endereco'
+    camposDesejados = 'pni_identificador, pni_descricao, pni_endereco, ST_AsText(pni_pontointeresse.geom), ST_AsText(ST_Transform(pni_pontointeresse.geom,4326))'
     condicao = "where ST_Within(pni_pontointeresse.geom, aoi_areainteresse.geom) and emp_identificador =  " + str(uhe)
     condicao = condicao + " and usu_identificador = " + str(usu_identificador)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
@@ -314,7 +345,14 @@ def pontosUHEAnalise(uhe):
             mensagemPontos["situacao_PAE"] = 'Dentro da ZSS'
         else:
             mensagemPontos["situacao_PAE"] = 'Fora da ZAS e da ZSS'
-
+        x = dadosPontos[i][3].split(' ')[0][6:]
+        y = dadosPontos[i][3].split(' ')[1][:-1]
+        mensagemPontos["x"] = x
+        mensagemPontos["y"] = y
+        lat = dadosPontos[i][4].split(' ')[0][6:]
+        long = dadosPontos[i][4].split(' ')[1][:-1]
+        mensagemPontos["lat"] = lat
+        mensagemPontos["long"] = long
         dadosFinais.append(mensagemPontos)
 
     corpoMensagem = {}
@@ -331,7 +369,7 @@ def rotaPontoEspecifico(ponto):
 
     mensagemPontoEspecifico = {}
     # verifica se o ponto específico existe e se ele está na ZAS
-    camposDesejados = 'pni_identificador'
+    camposDesejados = 'pni_identificador,ST_AsText(pni_pontointeresse.geom), ST_AsText(ST_Transform(pni_pontointeresse.geom,4326))'
     condicao = "where pni_identificador =  " + str(ponto)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse', condicao, camposDesejados)
 
@@ -352,14 +390,25 @@ def rotaPontoEspecifico(ponto):
     if len(dadosPontosZAS) == 0:
         return {"message": "Ponto de Análise não está na ZAS."}, 400, header
 
+    print(dadosPontosZAS)
+    print(dadosPontos)
     detalhePontoAnalise = {}
     detalhePontoAnalise['id_ponto'] = dadosPontosZAS[0][0]
     detalhePontoAnalise['nome_ponto'] = dadosPontosZAS[0][1]
     detalhePontoAnalise['ZAS'] = dadosPontosZAS[0][3]
+    x = dadosPontos[0][1].split(' ')[0][6:]
+    y = dadosPontos[0][1].split(' ')[1][:-1]
+    detalhePontoAnalise["x"] = x
+    detalhePontoAnalise["y"] = y
+    lat = dadosPontos[0][2].split(' ')[0][6:]
+    long = dadosPontos[0][2].split(' ')[1][:-1]
+    detalhePontoAnalise["lat"] = lat
+    detalhePontoAnalise["long"] = long
     mensagemPontoEspecifico["ponto_analise"] = detalhePontoAnalise
+    print(mensagemPontoEspecifico)
     # obtem o trecho da rota mais próximo
 
-    camposDesejados = "pni_pontointeresse.pni_identificador, st_distance(pni_pontointeresse.geom,tro_trechorotaevacuacao.geom) as distancia,"
+    camposDesejados = "pni_pontointeresse.pni_identificador, st_distance(pni_pontointeresse.geom,tro_trechorotaevacuacao.geom) as distancia, "
     camposDesejados = camposDesejados + "tro_identificador"
     condicao = "where pni_pontointeresse.pni_identificador = " + str(ponto) + " order by distancia limit 1 "
     dadosPontosRota, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse, tro_trechorotaevacuacao', condicao, camposDesejados)
@@ -386,9 +435,9 @@ def rotaPontoEspecifico(ponto):
     trecho_anterior = []
     trecho_nome = {}
 
-    camposDesejados = 'tro_identificador, tro_anterior'
-    condicao = "WHERE rot_identificador = " + str(dadosRota[0][0])
-    dadosTrecho, retorno, mensagemRetorno = acessoBanco.leDado('rot_tro_rotaevacuacao_trechorotaevacuacao', condicao, camposDesejados)
+#    camposDesejados = 'tro_identificador, tro_anterior'
+#   condicao = "WHERE rot_identificador = " + str(dadosRota[0][0])
+#    dadosTrecho, retorno, mensagemRetorno = acessoBanco.leDado('rot_tro_rotaevacuacao_trechorotaevacuacao', condicao, camposDesejados)
 
     camposDesejados = 'rot_tro_rotaevacuacao_trechorotaevacuacao.tro_identificador, tro_anterior, tro_logradouro'
     condicao = "INNER JOIN tro_trechorotaevacuacao ON rot_tro_rotaevacuacao_trechorotaevacuacao.tro_identificador =  tro_trechorotaevacuacao.tro_identificador WHERE rot_identificador =" + str(dadosRota[0][0])
@@ -422,7 +471,7 @@ def rotaPontoEspecifico(ponto):
 
 
     #recupera o ponto de segurança da rota
-    camposDesejados = 'rot_pns_rotaevacuacao_pontoseguranca.pns_identificador, pns_identificacao'
+    camposDesejados = 'rot_pns_rotaevacuacao_pontoseguranca.pns_identificador, pns_identificacao, ST_AsText(pns_pontoseguranca.geom), ST_AsText(ST_Transform(pns_pontoseguranca.geom,4326))'
     condicao = "INNER JOIN pns_pontoseguranca ON rot_pns_rotaevacuacao_pontoseguranca.pns_identificador = pns_pontoseguranca.pns_identificador WHERE rot_pns_rotaevacuacao_pontoseguranca.rot_identificador = " + str(
         dadosRota[0][0])
     dadosPonto, retorno, mensagemRetorno = acessoBanco.leDado('rot_pns_rotaevacuacao_pontoseguranca', condicao,
@@ -430,12 +479,20 @@ def rotaPontoEspecifico(ponto):
 
     if retorno == 404:
         return {"message": "Erro de acesso ao banco"}, 401, header
-
+    print(dadosPonto)
     if len(dadosPonto) == 0:
         return {"message": "Esta UHE não possui pontos de segurança."}, 400, header
     detalhePontoSeguranca = {}
     detalhePontoSeguranca['id_ponto'] = dadosPonto[0][0]
     detalhePontoSeguranca['nome_ponto'] = dadosPonto[0][1]
+    x = dadosPonto[0][2].split(' ')[0][6:]
+    y = dadosPonto[0][2].split(' ')[1][:-1]
+    detalhePontoSeguranca["x"] = x
+    detalhePontoSeguranca["y"] = y
+    lat = dadosPonto[0][3].split(' ')[0][6:]
+    long = dadosPonto[0][3].split(' ')[1][:-1]
+    detalhePontoSeguranca["lat"] = lat
+    detalhePontoSeguranca["long"] = long
     mensagemPontoEspecifico["ponto_seguranca"] = detalhePontoSeguranca
 
     #recupera os dados da rota
@@ -524,24 +581,24 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
     cheque['message'] = ''
     erro = False
 
-    if pni_descricao is None or len(pni_descricao) < 8:
+    if pni_descricao is None or len(pni_descricao) < 2:
         cheque['message'] = 'A descrição do Ponto de Análise é obrigatória'
         erro = True
 
     if x is not None and len(x) > 0:
         if not real(x):
             if not erro:
-                cheque['message'] = "Coordenada 'X' é obrigatória e em formato real"
+                cheque['message'] = "Longitude é obrigatória e em formato real"
             else:
-                cheque['message'] = cheque['message'] + " - Coordenada 'X' é obrigatória e em formato real"
+                cheque['message'] = cheque['message'] + " - Longitude é obrigatória e em formato real"
             erro = True
 
     if y is not None and len(y) > 0:
         if not real(y):
             if not erro:
-                cheque['message'] = "Coordenada 'Y' é obrigatória e em formato real"
+                cheque['message'] = "Latitude é obrigatória e em formato real"
             else:
-                cheque['message'] = cheque['message'] + " - Coordenada 'Y' é obrigatória e em formato real"
+                cheque['message'] = cheque['message'] + " - Latitude é obrigatória e em formato real"
             erro = True
 
     if erro:
@@ -562,7 +619,7 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
         camposDesejados = 'pni_identificador, pni_descricao, usu_identificador, pni_identificadoratualizacao, pni_dataatualizacao, geom'
         valores = str(proximoNumero) + ",'" + pni_descricao + "'," + str(usu_identificador)
         valores = valores + ',' + str(usu_identificador) + ",'" + datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        valores = valores + "'," + "ST_GeomFromText('POINT(" + str(x) + " " + str(y) + ")', 3857)"
+        valores = valores + "'," + "ST_GeomFromText(ST_Transform('POINT(" + str(y) + " " + str(x) + "),4326)', 3857)"
         pni_endereco = ''
     else:
         camposDesejados = 'pni_identificador, pni_descricao, pni_endereco, usu_identificador, pni_identificadoratualizacao, pni_dataatualizacao, geom'
@@ -578,8 +635,8 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
     mensagemPontos["id"] = proximoNumero
     mensagemPontos["nome"] = pni_descricao
     mensagemPontos["endereco"] = pni_endereco
-    mensagemPontos["x"] = x
-    mensagemPontos["y"] = y
+    mensagemPontos["lat"] = x
+    mensagemPontos["long"] = y
 
     corpoMensagem ={}
     corpoMensagem['ponto'] = mensagemPontos
