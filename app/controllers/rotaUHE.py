@@ -33,3 +33,13 @@ def api_rotas_pontos():
 def api_rotas_pontosatuais(id):
     resultado, retorno, header = gestaoUHE.pontosAtual(id)
     return jsonify(resultado), retorno, header
+
+@app.route('/seguranca_barragem/vazoes/<int:id>', methods=['GET'])
+def api_vazoes(id):
+    resultado, retorno, header = gestaoUHE.vazoesTotal(id)
+    return jsonify(resultado), retorno, header
+
+@app.route('/seguranca_barragem/vazao', methods=['GET'])
+def api_vazao_especifica():
+    resultado, retorno, header = gestaoUHE.vazaoEspecifica()
+    return jsonify(resultado), retorno, header

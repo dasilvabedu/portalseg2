@@ -98,7 +98,7 @@ def rotasOrdenadas(uhe):
 def pontosUHE(uhe):
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        return mensagem, 400, {}
 
     codificado, volta = gestaoAutenticacao.expandeToken()
     usu_identificador = volta['sub']
@@ -139,16 +139,16 @@ def pontosUHE(uhe):
 def pontosUsuario():
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        return mensagem, 400, {}
 
     codificado, volta = gestaoAutenticacao.expandeToken()
     usu_identificador = volta['sub']
 
     if request.method == 'GET':
-    # verifica se existem pontos na área de interesse da UHE
+    # recupera os pontos de análise do usuário
         camposDesejados = 'pni_identificador, pni_descricao, pni_endereco,ST_AsText(pni_pontointeresse.geom), ST_AsText(ST_Transform(pni_pontointeresse.geom,4326))'
         condicao = "WHERE usu_identificador = " + str(usu_identificador)
-        dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
+        dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse', condicao, camposDesejados)
 
         if retorno == 404:
             return {"message": "Erro de acesso ao banco"}, 401, header
@@ -266,7 +266,6 @@ def pontosAtual(id_ponto):
 
         return {}, 200, header
 
-
 def pontosUHEAnalise(uhe):
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
@@ -299,8 +298,9 @@ def pontosUHEAnalise(uhe):
         dadosPontosZAS = []
         dadosPontosZSS = []
     else:
+        pae_identificador = dadosPAE[0][0]
         camposDesejados = 'pni_identificador, pni_descricao, zas_identificador, zas_texto'
-        condicao = "where ST_Within(pni_pontointeresse.geom,zas_zonaautossalvamento.geom) and pae_identificador =  " + str(uhe)
+        condicao = "where ST_Within(pni_pontointeresse.geom,zas_zonaautossalvamento.geom) and pae_identificador =  " + str(pae_identificador)
         condicao = condicao + " and usu_identificador = " + str(usu_identificador)
         dadosPontosZAS, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,zas_zonaautossalvamento', condicao, camposDesejados)
 
@@ -310,7 +310,7 @@ def pontosUHEAnalise(uhe):
     # verifica a situação com relação à ZSS
 
         camposDesejados = 'pni_identificador, pni_descricao, zss_identificador, zss_texto'
-        condicao = "where ST_Within(pni_pontointeresse.geom,zss_zonasecundaria.geom) and pae_identificador =  " + str(uhe)
+        condicao = "where ST_Within(pni_pontointeresse.geom,zss_zonasecundaria.geom) and pae_identificador =  " + str(pae_identificador)
         condicao = condicao + " and usu_identificador = " + str(usu_identificador)
         dadosPontosZSS, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,zss_zonasecundaria', condicao, camposDesejados)
 
@@ -325,10 +325,57 @@ def pontosUHEAnalise(uhe):
     for i in range(len(dadosPontosZSS)):
         listaZSS.append(dadosPontosZSS[i][0])
 
-    # verifica a situação com relação ao Sosem - a implementar
-    listaSosem= []
+    # verifica a situação com relação ao Sosem
+    camposDesejados = 'vaz_identificador, vaz_datahora, vaz_vazaoconsiderada'
+    condicao = "WHERE emp_identificador = " + str(uhe) + " order by vaz_datahora"
+    dadosVazao, retorno, mensagemRetorno = acessoBanco.leDado('vaz_vazaodefluente', condicao, camposDesejados)
+    if retorno == 404:
+        return {"message": "Erro de acesso ao banco"}, 401, header
+    print(dadosVazao)
+    menorData = datetime.datetime.strptime("2900-12-31 23:59:59", '%Y-%m-%d %H:%M:%S')
+    maiorData = datetime.datetime.strptime("2000-01-01 00:00:00", '%Y-%m-%d %H:%M:%S')
+    print(type(menorData))
+    print (menorData)
+    print (menorData)
+    if dadosVazao == []:
+        listaSosem = []
+    else:
+        vazoes = "("
+        vazoesLista = []
+        for i in range(len(dadosVazao)):
+            if dadosVazao[i][1] > maiorData:
+                maiorData =  dadosVazao[i][1]
+            if dadosVazao[i][1] < menorData:
+                menorData = dadosVazao[i][1]
+            if dadosVazao[i][2] not in vazoesLista:
+                vazoes = vazoes + str(dadosVazao[i][2]) + ","
+                vazoesLista.append(dadosVazao[i][2])
+        vazoes = vazoes[:-1] + ")"
+        camposDesejados = 'pni_identificador, pni_descricao, man_identificador, man_vazao'
+        condicao = "where ST_Within(pni_pontointeresse.geom,man_manchainundacao.geom) and emp_identificador =  " + str(uhe)
+        condicao = condicao + " and usu_identificador = " + str(usu_identificador) + " and man_vazao in " + vazoes
+        dadosPontoSosem, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,man_manchainundacao', condicao,
+                                                                      camposDesejados)
+        if retorno == 404:
+            return {"message": "Erro de acesso ao banco"}, 401, header
+        print(dadosPontoSosem)
+        listaSosem = []
+        dataSosem = []
+        vazaoSosem = []
+        if dadosPontoSosem == []:
+            listaSosem= []
+        else:
+            for i in range(len(dadosPontoSosem)):
+                for j in range(len(dadosVazao)):
+                    if dadosPontoSosem[i][3] == dadosVazao[j][2]:
+                        listaSosem.append(dadosPontoSosem[i][0])
+                        dataSosem.append(dadosVazao[j][1])
+                        vazaoSosem.append(dadosPontoSosem[i][3])
+                        break
 
-# monta resposta
+    #verifica se existe alguma vazão que inunda os pontos
+
+    # monta resposta
     dadosFinais = []
     for i in range(len(dadosPontos)):
         mensagemPontos = {}
@@ -336,9 +383,12 @@ def pontosUHEAnalise(uhe):
         mensagemPontos["nome"] = dadosPontos[i][1]
         mensagemPontos["endereco"] = dadosPontos[i][2]
         if dadosPontos[i][0] in listaSosem:
-            mensagemPontos["situacao_SOSEM"] = "Area a ser inundada"
+            for j in range(len(listaSosem)):
+                if dadosPontos[i][0] == listaSosem[j]:
+                    mensagemPontos["situacao_SOSEM"] = "Dentro de área inundada - vazão: " + str(vazaoSosem[j]) + " m3/s - data/hora: " + dataSosem[j].strftime('%d-%m-%Y %H:%M:%S')
+                    break
         else:
-            mensagemPontos["situacao_SOSEM"] = "Fora de área inundada"
+            mensagemPontos["situacao_SOSEM"] = "Fora de área a ser inundada"
         if dadosPontos[i][0] in listaZAS:
             mensagemPontos["situacao_PAE"] = 'Dentro da ZAS'
         elif dadosPontos[i][0] in listaZSS:
@@ -357,6 +407,122 @@ def pontosUHEAnalise(uhe):
 
     corpoMensagem = {}
     corpoMensagem['pontos'] = dadosFinais
+    return corpoMensagem, 200, header
+
+def vazaoEspecifica():
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 400, {}
+
+    codificado, volta = gestaoAutenticacao.expandeToken()
+    usu_identificador = volta['sub']
+
+    query_parameters = request.args
+    vazao = query_parameters.get('vazao')
+    uhe = query_parameters.get('usina')
+
+    if vazao is None or len(vazao) < 1 or uhe is None or len(uhe) < 1:
+        return {"message": "Parâmetros 'vazao' e 'usina' obrigatórios"}, 401, {}
+
+    # verifica se existem pontos na área de interesse da UHE
+    camposDesejados = 'pni_identificador, pni_descricao, pni_endereco, ST_AsText(pni_pontointeresse.geom), ST_AsText(ST_Transform(pni_pontointeresse.geom,4326))'
+    condicao = "where ST_Within(pni_pontointeresse.geom, aoi_areainteresse.geom) and emp_identificador =  " + str(uhe)
+    condicao = condicao + " and usu_identificador = " + str(usu_identificador)
+    dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
+
+    if retorno == 404:
+        return {"message": "Erro de acesso ao banco"}, 401, header
+
+    if len(dadosPontos) == 0:
+        return {"message": "Este usuário não possui Pontos de Interesse cadastrados."}, 400, header
+
+    # verifica a situação com relação ao Sosem
+    camposDesejados = 'pni_identificador, pni_descricao, man_identificador'
+    condicao = "where ST_Within(pni_pontointeresse.geom,man_manchainundacao.geom) and emp_identificador =  " + str(uhe)
+    condicao = condicao + " and usu_identificador = " + str(usu_identificador) + " and man_vazao = " + vazao
+    dadosPontoSosem, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,man_manchainundacao', condicao,
+                                                                  camposDesejados)
+    if retorno == 404:
+        return {"message": "Erro de acesso ao banco"}, 401, header
+    print(dadosPontoSosem)
+
+    listaSosem = []
+    if dadosPontoSosem != []:
+        for i in range(len(dadosPontoSosem)):
+            listaSosem.append(dadosPontoSosem[i][0])
+
+    # monta resposta
+    dadosFinais = []
+    for i in range(len(dadosPontos)):
+        mensagemPontos = {}
+        mensagemPontos["id"] = dadosPontos[i][0]
+        mensagemPontos["nome"] = dadosPontos[i][1]
+        mensagemPontos["endereco"] = dadosPontos[i][2]
+        if dadosPontos[i][0] in listaSosem:
+            mensagemPontos["situacao_SOSEM"] = "Dentro de área inundada "
+        else:
+            mensagemPontos["situacao_SOSEM"] = "Fora de área inundada "
+        x = dadosPontos[i][3].split(' ')[0][6:]
+        y = dadosPontos[i][3].split(' ')[1][:-1]
+        mensagemPontos["x"] = x
+        mensagemPontos["y"] = y
+        lat = dadosPontos[i][4].split(' ')[0][6:]
+        long = dadosPontos[i][4].split(' ')[1][:-1]
+        mensagemPontos["lat"] = lat
+        mensagemPontos["long"] = long
+        dadosFinais.append(mensagemPontos)
+
+    corpoMensagem = {}
+    corpoMensagem['pontos'] = dadosFinais
+    return corpoMensagem, 200, header
+
+def vazoesTotal(uhe):
+    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 400, ''
+
+    codificado, volta = gestaoAutenticacao.expandeToken()
+    usu_identificador = volta['sub']
+
+    # recupera as vazões
+    listaSosem= []
+    camposDesejados = 'vaz_identificador, vaz_datahora, vaz_vazaoprevista, vaz_situacaososem, vaz_vazaoconsiderada'
+    condicao = "WHERE emp_identificador = " + str(uhe) + " order by vaz_datahora"
+    dadosVazao, retorno, mensagemRetorno = acessoBanco.leDado('vaz_vazaodefluente', condicao, camposDesejados)
+    if retorno == 404:
+        return {"message": "Erro de acesso ao banco"}, 401, header
+    print(dadosVazao)
+    menorData = datetime.datetime.strptime("2900-12-31 23:59:59", '%Y-%m-%d %H:%M:%S')
+    maiorData = datetime.datetime.strptime("2000-01-01 00:00:00", '%Y-%m-%d %H:%M:%S')
+    print(type(menorData))
+    print (menorData)
+    print (menorData)
+    if dadosVazao != []:
+        for i in range(len(dadosVazao)):
+            if dadosVazao[i][1] > maiorData:
+                maiorData =  dadosVazao[i][1]
+            if dadosVazao[i][1] < menorData:
+                menorData = dadosVazao[i][1]
+
+    # monta resposta
+    mensagemPeriodo = {}
+    mensagemPeriodo['comeco'] = menorData.strftime('%d-%m-%Y %H:%M:%S')
+    mensagemPeriodo['final'] = maiorData.strftime('%d-%m-%Y %H:%M:%S')
+
+    corpoMensagem = {}
+    corpoMensagem['periodo'] = mensagemPeriodo
+
+    dadosFinais = []
+    for i in range(len(dadosVazao)):
+        mensagemVazoes= {}
+        mensagemVazoes["id"] = dadosVazao[i][0]
+        mensagemVazoes["data"] = dadosVazao[i][1].strftime('%d-%m-%Y %H:%M:%S')
+        mensagemVazoes["vazao_prevista"] = dadosVazao[i][2]
+        mensagemVazoes["situacao_sosem"] = dadosVazao[i][3]
+        mensagemVazoes["vazao_considerada"] = dadosVazao[i][4]
+        dadosFinais.append(mensagemVazoes)
+
+    corpoMensagem['vazoes'] = dadosFinais
     return corpoMensagem, 200, header
 
 def rotaPontoEspecifico(ponto):

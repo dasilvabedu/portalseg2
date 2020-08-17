@@ -8,3 +8,4 @@ from ..models import gestaoDocumentacao
 def api_documentacao_agrupado(grupo):
     resultado, retorno, header = gestaoDocumentacao.documentacaoAgrupado(grupo)
     return jsonify(resultado), retorno, header
+

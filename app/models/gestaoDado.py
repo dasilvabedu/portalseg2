@@ -122,6 +122,10 @@ def dadoConvencionalAtualizado():
         dados = request.json
         print(dados)
         mtt_tabela = dados['tabela']
+        if mtt_tabela not in ('mtt_metadadotabela','mtt_metadadoatributo'):
+            resposta = acessoBanco.montaRetorno(400, 'Funcionalidade não permitida para esta tabela.')
+            return resposta, 400, header
+
         prefixo = mtt_tabela[0:4]
 
         resultadoTabela, resultadoAtributo, retorno, mensagemRetorno = acessoBanco.leMetadado(None, mtt_tabela, None, 'Sim')

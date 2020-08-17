@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from ..views import acessoBanco
-from ..models import gestaoAutenticacao, gestaoUsuario
+from ..models import gestaoAutenticacao
 from flask import request
 import bcrypt
 import datetime
 from validate_email import validate_email
+
 
 def trataLogin(usu_login, usu_senha):
 
@@ -80,7 +81,7 @@ def trataLogin(usu_login, usu_senha):
             for i in range(len(dadosTransacao)):
                 transacoes = transacoes + str(dadosTransacao[i][0]) + ','
             transacoes = transacoes[0:-1] + ')'
-
+            print(transacoes)
         #recupera o código das transações associadas
             camposdesejados = 'trn_codigo'
             tabela = 'trn_transacaosistema'
@@ -92,7 +93,7 @@ def trataLogin(usu_login, usu_senha):
 
             codigoTransacao = []
             for i in range(len(dadosCodigo)):
-                codigoTransacao.append('"' + str(dadosCodigo[i][0]) + '"')
+                codigoTransacao.append( dadosCodigo[i][0] )
             codigoTransacao = list(set(codigoTransacao))
             dicionarioRetorno['allowed_transactions'] = codigoTransacao
 
@@ -118,6 +119,10 @@ def usuarioAtual(id):
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
         return mensagem, 400, {}
+
+    token, dadosToken = gestaoAutenticacao.expandeToken()
+    if dadosToken['sub'] != id:
+        return {"message":"Não é possível alterar dados de outro usuário."},400, header
 
     if request.method == 'PATCH':
         #atualização de usuário
@@ -169,11 +174,7 @@ def usuarioExistente():
     resultadoFinal, retorno, header = trataLogin(usu_login, usu_senha)
     return resultadoFinal, retorno, header
 
-def usuarioTokenDesativado():
-
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
-    if not checa:
-        return mensagem, 400, header
+def usuarioTokenDesativado(header):
 
     campos = 'count(tki_identificador)'
     dados, retorno, mensagemRetorno = acessoBanco.leDado('tki_tokeninvalidado', None, campos)
@@ -309,6 +310,7 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
     cheque = {}
     erro = False
     alteracao = False
+    senhaCriptografada = None
 
     if usu_celular is not None and len(usu_celular) > 0:
         if not inteiro(usu_celular):
@@ -338,6 +340,18 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
 
     if usu_nome is not None and len(usu_nome) > 0:
         alteracao = True
+
+    if usu_senha is not None:
+        if len(usu_senha) < 8:
+            if not erro:
+                cheque['message'] = 'Senha deve possuin pelo menos 8 caracteres.'
+            else:
+                cheque['message'] = cheque['message'] + ' # Senha deve possuin pelo menos 8 caracteres.'
+            erro = True
+        else:
+            salt = bcrypt.gensalt(rounds=12)
+            senhaCriptografada = bcrypt.hashpw(usu_senha.encode('utf-8'), salt).decode('utf-8')
+            alteracao = True
 
     if erro:
         return cheque, 400
@@ -420,9 +434,9 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
         dicionarioRetorno['email'] = usu_email
         comando_email = ", usu_email = '" + usu_email + "'"
 
-    if usu_senha is not None:
-        if usu_senha != usu_senha_ant:
-            comando_senha = ", usu_senha = '" + usu_senha + "'"
+    if senhaCriptografada is not None:
+        if senhaCriptografada != usu_senha_ant:
+            comando_senha = ", usu_senha = '" + senhaCriptografada + "'"
 
     if usu_nome is not None:
         if usu_nome != usu_nome_ant:

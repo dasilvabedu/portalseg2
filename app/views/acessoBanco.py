@@ -219,7 +219,7 @@ def insereDado(tabela, camposDesejados=None, valores=None):
 
     # execucao de comando
         comando = "INSERT INTO " + tabela + " (" + camposDesejados + ") values (" + valores + ")"
-
+        print(comando)
         resultado = []
         cur.execute(comando)
         conn.commit()

@@ -15,11 +15,6 @@ def api_dado_convencional_atualizado():
     return jsonify(resultado), retorno, header
 
 
-@app.route('/seguranca_barragem/dado/excluido', methods=['DELETE'])
-def api_dado_excluido():
-    resultado, retorno,header = gestaoDado.dadoExcluido()
-    return jsonify(resultado), retorno, header
-
 @app.route('/seguranca_barragem/dado/qualificado', methods=['GET'])
 def api_dado_qualificado():
     resultado, retorno, header = gestaoDado.dadoQualificado()

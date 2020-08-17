@@ -16,6 +16,6 @@ DATABASE_PROD_URL = "postgres://postgres:fSFC9LVnd2GBQZVG@rapidpro.c9aatnzr39zi.
 SECRET_KEY = b'i\xfc\xc9\x04\x93d\xaaW\xd7D\x87JLd!\xbd)\xbc\xa5\xc5\xc6 \x05\xf0\xc7t\x14\xbc\x82\xdb\x98\n'
 
 # Tempo em minutos para validade do Token
-DURACAO_TOKEN = 60
+DURACAO_TOKEN = 120
 
 
