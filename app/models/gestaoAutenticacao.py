@@ -170,7 +170,7 @@ def complementaToken(existe=None):
     campo = 'uca_celular'
     condicao = "WHERE usu_identificador = " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('uca_celularadicional', condicao, campo)
-    if retorno != 200:
+    if retorno == 404:
         return {'message':'Erro de acesso ao banco'}, 400, header
     codigo = []
     for i in range(len(dados)):
@@ -182,7 +182,7 @@ def complementaToken(existe=None):
     campo = 'uea_email'
     condicao = "WHERE usu_identificador = " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('uea_emailadicional', condicao, campo)
-    if retorno != 200:
+    if retorno == 404:
         return {'message':'Erro de acesso ao banco'}, 400, header
     codigo = []
     for i in range(len(dados)):

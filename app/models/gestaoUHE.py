@@ -38,7 +38,7 @@ def rotasOrdenadas(uhe):
         trecho_anterior = []
         trecho_nome = {}
         mensagemRota = {}
-        mensagemRota["id_rota"] = dadosRota[i][0]
+        mensagemRota["id_rota"] = int(dadosRota[i][0])
         mensagemRota["nome_rota"] = dadosRota[i][1]
 
         camposDesejados = 'rot_tro_rotaevacuacao_trechorotaevacuacao.tro_identificador, tro_anterior, tro_logradouro'
@@ -65,16 +65,16 @@ def rotasOrdenadas(uhe):
         if len(dadosPonto) == 0:
             return {"message": "Esta UHE não possui pontos de segurança."}, 400, header
         detalhePontos = {}
-        detalhePontos['id_ponto'] = dadosPonto[0][0]
+        detalhePontos['id_ponto'] = int(dadosPonto[0][0])
         detalhePontos['nome_ponto'] = dadosPonto[0][1]
         x = dadosPonto[0][2].split(' ')[0][6:]
         y = dadosPonto[0][2].split(' ')[1][:-1]
-        detalhePontos["x"] = x
-        detalhePontos["y"] = y
+        detalhePontos["x"] = float(x)
+        detalhePontos["y"] = float(y)
         lat = dadosPonto[0][3].split(' ')[0][6:]
         long = dadosPonto[0][3].split(' ')[1][:-1]
-        detalhePontos["lat"] = lat
-        detalhePontos["long"] = long
+        detalhePontos["lat"] = float(lat)
+        detalhePontos["long"] = float(long)
         mensagemRota["ponto_seguranca"] = detalhePontos
         sequencia = 0
         montaTrecho = []
@@ -85,8 +85,8 @@ def rotasOrdenadas(uhe):
                 if nivel[n] == m:
                     mensagemTrechos = {}
                     sequencia = sequencia + 1
-                    mensagemTrechos["id_trecho"] = n
-                    mensagemTrechos["sequencia_trecho"] = sequencia
+                    mensagemTrechos["id_trecho"] =int(n)
+                    mensagemTrechos["sequencia_trecho"] = int(sequencia)
                     mensagemTrechos["nome_trecho"] = trecho_nome[n]
                     montaTrecho.append(mensagemTrechos)
 
@@ -119,17 +119,17 @@ def pontosUHE(uhe):
     dadosFinais = []
     for i in range(len(dadosPontos)):
         mensagemPontos = {}
-        mensagemPontos["id"] = dadosPontos[i][0]
+        mensagemPontos["id"] = int(dadosPontos[i][0])
         mensagemPontos["nome"] = dadosPontos[i][1]
         mensagemPontos["endereco"] = dadosPontos[i][2]
         x = dadosPontos[i][3].split(' ')[0][6:]
         y = dadosPontos[i][3].split(' ')[1][:-1]
-        mensagemPontos["x"] = x
-        mensagemPontos["y"] = y
+        mensagemPontos["x"] = float(x)
+        mensagemPontos["y"] = float(y)
         lat = dadosPontos[i][4].split(' ')[0][6:]
         long = dadosPontos[i][4].split(' ')[1][:-1]
-        mensagemPontos["lat"] = lat
-        mensagemPontos["long"] = long
+        mensagemPontos["lat"] = float(lat)
+        mensagemPontos["long"] = float(long)
         dadosFinais.append(mensagemPontos)
 
     corpoMensagem = {}
@@ -154,23 +154,27 @@ def pontosUsuario():
             return {"message": "Erro de acesso ao banco"}, 401, header
 
         if len(dadosPontos) == 0:
-            return {"message": "Este usuário não possui Pontos de Interesse cadastrados."}, 400, header
+            dadosFinais = []
+            corpoMensagem = {}
+            corpoMensagem['pontos'] = dadosFinais
+            corpoMensagem['message'] = "Este usuário não possui Pontos de Interesse cadastrados."
+            return corpoMensagem, 200, header
 
     # monta resposta
         dadosFinais = []
         for i in range(len(dadosPontos)):
             mensagemPontos = {}
-            mensagemPontos["id"] = dadosPontos[i][0]
+            mensagemPontos["id"] = int(dadosPontos[i][0])
             mensagemPontos["nome"] = dadosPontos[i][1]
             mensagemPontos["endereco"] = dadosPontos[i][2]
             x = dadosPontos[i][3].split(' ')[0][6:]
             y = dadosPontos[i][3].split(' ')[1][:-1]
-            mensagemPontos["x"] = x
-            mensagemPontos["y"] = y
+            mensagemPontos["x"] = float(x)
+            mensagemPontos["y"] = float(y)
             lat = dadosPontos[i][4].split(' ')[0][6:]
             long = dadosPontos[i][4].split(' ')[1][:-1]
-            mensagemPontos["lat"] = lat
-            mensagemPontos["long"] = long
+            mensagemPontos["lat"] = float(lat)
+            mensagemPontos["long"] = float(long)
             dadosFinais.append(mensagemPontos)
 
         corpoMensagem = {}
@@ -180,10 +184,15 @@ def pontosUsuario():
     elif request.method == 'POST':
         entrada = request.json
         print (entrada)
+        pni_descricao = None
+        pni_endereco = None
+        x = None
+        y = None
+
         pni_descricao = entrada.get('descricao')
         pni_endereco = entrada.get('endereco')
-        x = entrada.get('long')
-        y = entrada.get('lat')
+        y = entrada.get('long')
+        x = entrada.get('lat')
         resultadoFinal, retorno = trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y)
         return resultadoFinal, retorno, header
 
@@ -204,7 +213,7 @@ def pontosAtual(id_ponto):
         return {"message": "Erro de acesso ao banco"}, 401, header
 
     if len(dadosPontos) == 0:
-        return {"message": "Ponto de Análise inexistente"}, 400, header
+        return {"message": "Ponto de Análise inexistente para este usuário"}, 400, header
 
 
     if request.method == 'GET':
@@ -215,18 +224,21 @@ def pontosAtual(id_ponto):
         mensagemPontos["endereco"] = dadosPontos[0][2]
         x = dadosPontos[0][3].split(' ')[0][6:]
         y = dadosPontos[0][3].split(' ')[1][:-1]
-        mensagemPontos["x"] = x
-        mensagemPontos["y"] = y
+        mensagemPontos["x"] = float(x)
+        mensagemPontos["y"] = float(y)
         lat = dadosPontos[0][4].split(' ')[0][6:]
         long = dadosPontos[0][4].split(' ')[1][:-1]
-        mensagemPontos["lat"] = lat
-        mensagemPontos["long"] = long
+        mensagemPontos["lat"] = float(lat)
+        mensagemPontos["long"] = float(long)
         corpoMensagem = {}
         corpoMensagem['pontos'] = mensagemPontos
         return corpoMensagem, 200, header
 
     elif request.method == 'PATCH':
         entrada = request.json
+        pni_descricao = None
+        pni_endereco = None
+
         pni_descricao = entrada.get('descricao')
         pni_endereco = entrada.get('endereco')
         valores = ','
@@ -237,12 +249,30 @@ def pontosAtual(id_ponto):
         mensagemPontos["descricao"] = dadosPontos[0][1]
         mensagemPontos["endereco"] = dadosPontos[0][2]
 
-        if pni_descricao is not None and len(pni_descricao) != 0:
-            valores = valores + "pni_descricao = '" + pni_descricao + "',"
-            mensagemPontos["descricao"] = pni_descricao
-        if pni_endereco is not None and len(pni_endereco) != 0:
-            valores = valores + "pni_endereco = '" + pni_endereco + "',"
-            mensagemPontos["endereco"] = pni_endereco
+        erro = False
+        mensagemErro = ''
+        if pni_descricao is not None:
+            if type(pni_descricao) is str and len(pni_descricao) != 0:
+                valores = valores + "pni_descricao = '" + pni_descricao + "',"
+                mensagemPontos["descricao"] = pni_descricao
+            else:
+                mensagemErro = "Descrição deve ser textual"
+                erro = True
+
+        if pni_endereco is not None:
+            if type(pni_endereco) is str and len(pni_endereco) != 0:
+                valores = valores + "pni_endereco = '" + pni_endereco + "',"
+                mensagemPontos["endereco"] = pni_endereco
+            else:
+                if erro:
+                    mensagemErro = mensagemErro + " # Endereço deve ser textual"
+                else:
+                    mensagemErro = "Endereço deve ser textual"
+                    erro = True
+
+        if erro:
+            return {"message": mensagemErro}, 400, header
+
         if len(valores) == 1:
             return {"message": "Nenhuma informação para alteração foi enviada."}, 400, header
         else:
@@ -397,12 +427,12 @@ def pontosUHEAnalise(uhe):
             mensagemPontos["situacao_PAE"] = 'Fora da ZAS e da ZSS'
         x = dadosPontos[i][3].split(' ')[0][6:]
         y = dadosPontos[i][3].split(' ')[1][:-1]
-        mensagemPontos["x"] = x
-        mensagemPontos["y"] = y
+        mensagemPontos["x"] = float(x)
+        mensagemPontos["y"] = float(y)
         lat = dadosPontos[i][4].split(' ')[0][6:]
         long = dadosPontos[i][4].split(' ')[1][:-1]
-        mensagemPontos["lat"] = lat
-        mensagemPontos["long"] = long
+        mensagemPontos["lat"] = float(lat)
+        mensagemPontos["long"] = float(long)
         dadosFinais.append(mensagemPontos)
 
     corpoMensagem = {}
@@ -416,6 +446,9 @@ def vazaoEspecifica():
 
     codificado, volta = gestaoAutenticacao.expandeToken()
     usu_identificador = volta['sub']
+
+    vazao = None
+    uhe = None
 
     query_parameters = request.args
     vazao = query_parameters.get('vazao')
@@ -455,7 +488,7 @@ def vazaoEspecifica():
     dadosFinais = []
     for i in range(len(dadosPontos)):
         mensagemPontos = {}
-        mensagemPontos["id"] = dadosPontos[i][0]
+        mensagemPontos["id"] = int(dadosPontos[i][0])
         mensagemPontos["nome"] = dadosPontos[i][1]
         mensagemPontos["endereco"] = dadosPontos[i][2]
         if dadosPontos[i][0] in listaSosem:
@@ -464,12 +497,12 @@ def vazaoEspecifica():
             mensagemPontos["situacao_SOSEM"] = "Fora de área inundada "
         x = dadosPontos[i][3].split(' ')[0][6:]
         y = dadosPontos[i][3].split(' ')[1][:-1]
-        mensagemPontos["x"] = x
-        mensagemPontos["y"] = y
+        mensagemPontos["x"] = float(x)
+        mensagemPontos["y"] = float(y)
         lat = dadosPontos[i][4].split(' ')[0][6:]
         long = dadosPontos[i][4].split(' ')[1][:-1]
-        mensagemPontos["lat"] = lat
-        mensagemPontos["long"] = long
+        mensagemPontos["lat"] = float(lat)
+        mensagemPontos["long"] = float(long)
         dadosFinais.append(mensagemPontos)
 
     corpoMensagem = {}
@@ -515,11 +548,11 @@ def vazoesTotal(uhe):
     dadosFinais = []
     for i in range(len(dadosVazao)):
         mensagemVazoes= {}
-        mensagemVazoes["id"] = dadosVazao[i][0]
+        mensagemVazoes["id"] = int(dadosVazao[i][0])
         mensagemVazoes["data"] = dadosVazao[i][1].strftime('%d-%m-%Y %H:%M:%S')
-        mensagemVazoes["vazao_prevista"] = dadosVazao[i][2]
+        mensagemVazoes["vazao_prevista"] = float(dadosVazao[i][2])
         mensagemVazoes["situacao_sosem"] = dadosVazao[i][3]
-        mensagemVazoes["vazao_considerada"] = dadosVazao[i][4]
+        mensagemVazoes["vazao_considerada"] = float(dadosVazao[i][4])
         dadosFinais.append(mensagemVazoes)
 
     corpoMensagem['vazoes'] = dadosFinais
@@ -559,17 +592,17 @@ def rotaPontoEspecifico(ponto):
     print(dadosPontosZAS)
     print(dadosPontos)
     detalhePontoAnalise = {}
-    detalhePontoAnalise['id_ponto'] = dadosPontosZAS[0][0]
+    detalhePontoAnalise['id_ponto'] = int(dadosPontosZAS[0][0])
     detalhePontoAnalise['nome_ponto'] = dadosPontosZAS[0][1]
     detalhePontoAnalise['ZAS'] = dadosPontosZAS[0][3]
     x = dadosPontos[0][1].split(' ')[0][6:]
     y = dadosPontos[0][1].split(' ')[1][:-1]
-    detalhePontoAnalise["x"] = x
-    detalhePontoAnalise["y"] = y
+    detalhePontoAnalise["x"] = float(x)
+    detalhePontoAnalise["y"] = float(y)
     lat = dadosPontos[0][2].split(' ')[0][6:]
     long = dadosPontos[0][2].split(' ')[1][:-1]
-    detalhePontoAnalise["lat"] = lat
-    detalhePontoAnalise["long"] = long
+    detalhePontoAnalise["lat"] = float(lat)
+    detalhePontoAnalise["long"] = float(long)
     mensagemPontoEspecifico["ponto_analise"] = detalhePontoAnalise
     print(mensagemPontoEspecifico)
     # obtem o trecho da rota mais próximo
@@ -629,8 +662,8 @@ def rotaPontoEspecifico(ponto):
     for i in range(len(caminho)):
         mensagemTrechos = {}
         sequencia = sequencia + 1
-        mensagemTrechos["id_trecho"] = caminho[i]
-        mensagemTrechos["sequencia_trecho"] = sequencia
+        mensagemTrechos["id_trecho"] = int(caminho[i])
+        mensagemTrechos["sequencia_trecho"] = int(sequencia)
         mensagemTrechos["nome_trecho"] = trecho_nome[caminho[i]]
         montaTrecho.append(mensagemTrechos)
     mensagemPontoEspecifico["trechos"] = montaTrecho
@@ -649,16 +682,16 @@ def rotaPontoEspecifico(ponto):
     if len(dadosPonto) == 0:
         return {"message": "Esta UHE não possui pontos de segurança."}, 400, header
     detalhePontoSeguranca = {}
-    detalhePontoSeguranca['id_ponto'] = dadosPonto[0][0]
+    detalhePontoSeguranca['id_ponto'] = int(dadosPonto[0][0])
     detalhePontoSeguranca['nome_ponto'] = dadosPonto[0][1]
     x = dadosPonto[0][2].split(' ')[0][6:]
     y = dadosPonto[0][2].split(' ')[1][:-1]
-    detalhePontoSeguranca["x"] = x
-    detalhePontoSeguranca["y"] = y
+    detalhePontoSeguranca["x"] = float(x)
+    detalhePontoSeguranca["y"] = float(y)
     lat = dadosPonto[0][3].split(' ')[0][6:]
     long = dadosPonto[0][3].split(' ')[1][:-1]
-    detalhePontoSeguranca["lat"] = lat
-    detalhePontoSeguranca["long"] = long
+    detalhePontoSeguranca["lat"] = float(lat)
+    detalhePontoSeguranca["long"] = float(long)
     mensagemPontoEspecifico["ponto_seguranca"] = detalhePontoSeguranca
 
     #recupera os dados da rota
@@ -673,7 +706,7 @@ def rotaPontoEspecifico(ponto):
         return {"message": "Esta UHE não possui rota."}, 400, header
 
     detalheRota = {}
-    detalheRota['id_rota'] = dadosRota[0][0]
+    detalheRota['id_rota'] = int(dadosRota[0][0])
     detalheRota['nome_rota'] = dadosRotaEspec[0][0]
     mensagemPontoEspecifico["rota"] = detalheRota
 
@@ -747,24 +780,36 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
     cheque['message'] = ''
     erro = False
 
-    if pni_descricao is None or len(pni_descricao) < 2:
-        cheque['message'] = 'A descrição do Ponto de Análise é obrigatória'
+    if pni_descricao is None or type(pni_descricao) is not str or len(pni_descricao) < 2:
+        cheque['message'] = 'A descrição do Ponto de Análise é obrigatória e textual'
         erro = True
 
-    if x is not None and len(x) > 0:
+    if x is None:
+        if not erro:
+            cheque['message'] = "Latitude é obrigatória e em formato real"
+        else:
+            cheque['message'] = cheque['message'] + " - Latitude é obrigatória e em formato real"
+        erro = True
+    else:
         if not real(x):
-            if not erro:
-                cheque['message'] = "Longitude é obrigatória e em formato real"
-            else:
-                cheque['message'] = cheque['message'] + " - Longitude é obrigatória e em formato real"
-            erro = True
-
-    if y is not None and len(y) > 0:
-        if not real(y):
             if not erro:
                 cheque['message'] = "Latitude é obrigatória e em formato real"
             else:
                 cheque['message'] = cheque['message'] + " - Latitude é obrigatória e em formato real"
+            erro = True
+
+    if y is None:
+        if not erro:
+            cheque['message'] = "Longitude é obrigatória e em formato real"
+        else:
+            cheque['message'] = cheque['message'] + " - Longitude é obrigatória e em formato real"
+        erro = True
+    else:
+        if not real(y):
+            if not erro:
+                cheque['message'] = "Longitude é obrigatória e em formato real"
+            else:
+                cheque['message'] = cheque['message'] + " - Longitude é obrigatória e em formato real"
             erro = True
 
     if erro:
@@ -781,17 +826,26 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
     else:
         proximoNumero = dados[0][0]  + 1
 
+    comando =  "SELECT ST_AsText(ST_Transform(ST_GeomFromText('POINT(" + str(x) + " " + str(y) + ")',4326), 3857)) As wgs_geom "
+    dados, retorno, header = acessoBanco.executaComando(comando)
+    if retorno != 200:
+        return {"message": "Erro no acesso ao banco de dados"}, 404
+
+    print (dados)
+    wgs_geom = dados[0][0]
+    print (wgs_geom)
+
     if pni_endereco is None or len(pni_endereco) == 0:
         camposDesejados = 'pni_identificador, pni_descricao, usu_identificador, pni_identificadoratualizacao, pni_dataatualizacao, geom'
         valores = str(proximoNumero) + ",'" + pni_descricao + "'," + str(usu_identificador)
         valores = valores + ',' + str(usu_identificador) + ",'" + datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        valores = valores + "'," + "ST_GeomFromText(ST_Transform('POINT(" + str(y) + " " + str(x) + "),4326)', 3857)"
+        valores = valores + "'," + "ST_GeomFromText('" + wgs_geom + "', 3857)"
         pni_endereco = ''
     else:
         camposDesejados = 'pni_identificador, pni_descricao, pni_endereco, usu_identificador, pni_identificadoratualizacao, pni_dataatualizacao, geom'
         valores = str(proximoNumero)  + ",'" + pni_descricao + "','" + pni_endereco + "'," + str(usu_identificador)
         valores = valores + ',' + str(usu_identificador) + ",'" + datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-        valores = valores + "'," + "ST_GeomFromText('POINT(" + str(x) + " " + str(y) + ")', 3857)"
+        valores = valores + "'," + "ST_GeomFromText('" + wgs_geom + "', 3857)"
 
     dados, retorno, header = acessoBanco.insereDado('pni_pontointeresse', camposDesejados, valores)
     if retorno != 201:
@@ -801,8 +855,8 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
     mensagemPontos["id"] = proximoNumero
     mensagemPontos["nome"] = pni_descricao
     mensagemPontos["endereco"] = pni_endereco
-    mensagemPontos["lat"] = x
-    mensagemPontos["long"] = y
+    mensagemPontos["lat"] = float(x)
+    mensagemPontos["long"] = float(y)
 
     corpoMensagem ={}
     corpoMensagem['ponto'] = mensagemPontos

@@ -63,5 +63,5 @@ def documentacaoAgrupado(grupo=None):
 
     listaMensagem = {}
     listaMensagem['documentos'] = retorna
-    return listaMensagem, retorno, header
+    return listaMensagem, 200, header
 

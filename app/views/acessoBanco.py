@@ -383,6 +383,40 @@ def executaDadoMultiplo(comando):
         if conn is not None:
             conn.close()
 
+def executaComando(comando):
+
+    conn = None
+    print (comando)
+
+    try:
+    # conecta ao servidor PostgreSQL - Google cloud
+        conn = psycopg2.connect(database_url)
+
+    # conecta ao servidor PostgreSQL - Heroku
+        #conn = psycopg2.connect(database_url, sslmode='require')
+
+        if conn is None:
+            return [], 404, "Conexão ao banco falhou"
+    # criacao de cursor
+        cur = conn.cursor()
+
+    # execucao de comando
+        resultado = []
+        cur.execute(comando)
+        recset = cur.fetchall()
+        for rec in recset:
+            resultado.append(rec)
+    # encerra conexao ao PostgreSQL
+        cur.close()
+        return resultado, 200, ""
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        cur.close()
+        return [], 404, 'Erro do sistema: ' + str(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
 def exclueMetadado(tabela):
     """ Exclue registro de mtt_metadadotabela e mta_metadadoatributo """
     conn = None
