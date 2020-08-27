@@ -18,4 +18,10 @@ SECRET_KEY = b'i\xfc\xc9\x04\x93d\xaaW\xd7D\x87JLd!\xbd)\xbc\xa5\xc5\xc6 \x05\xf
 # Tempo em minutos para validade do Token
 DURACAO_TOKEN = 240
 
+# Parâmetros para acesso ao envio de mensagens
+CAMINHO_MENSAGEM = "https://capacitacao.geocart.xyz/api/v2/flow_starts.json"
+HEADER_MENSAGEM = "Token ce5ed3234011bc9b936a80851141869f347191d2"
+FLOW_MENSAGEM = "27fa4531-ca61-4b55-8238-03948d286bdf"
+
+
 

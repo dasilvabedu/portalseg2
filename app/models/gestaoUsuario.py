@@ -6,7 +6,10 @@ from flask import request
 import bcrypt
 import datetime
 from validate_email import validate_email
-
+from app import config
+from random import randint
+import requests
+import json
 
 def trataLogin(usu_login, usu_senha):
 
@@ -21,7 +24,7 @@ def trataLogin(usu_login, usu_senha):
         condicao = "WHERE usu_autenticacao = 'ativo' and usu_email = '" + usu_login + "'"
     dados, retorno, mensagemRetorno = acessoBanco.dado('usu_usuario', condicao, None, None)
     if retorno != 200:
-        return {"message": "Erro de acesso ao banco"}, 404, {}
+        return {"message": "Erro de acesso ao banco ou de sistema"}, 400, {}
 
     # valida os dados do usuário
     volta = {}
@@ -33,7 +36,7 @@ def trataLogin(usu_login, usu_senha):
         volta['message'] = 'Usuário inativo'
 
     if volta != {}:
-        return volta, 400, {}
+        return volta, 404, {}
 
     agora = datetime.datetime.utcnow()
     dicionarioRetorno = {}
@@ -55,8 +58,8 @@ def trataLogin(usu_login, usu_senha):
     condicao = condicao + str(dados[0]['usu_identificador'])
 
     dadosPerfil, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
-    if retorno != 200 and retorno != 400:
-        return {"message": "Erro de acesso ao banco"}, 404, {}
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, {}
 
     if len(dadosPerfil) != 0:
         perfis =''
@@ -73,8 +76,8 @@ def trataLogin(usu_login, usu_senha):
         condicao = 'INNER JOIN pfa_perfilacesso ON pfa_perfilacesso.pfa_identificador = pfa_trn_perfilacesso_transacaosistema.pfa_identificador WHERE pfa_perfilacesso.pfa_identificador IN '
         condicao = condicao + '(' + perfis + ')'
         dadosTransacao, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
-        if retorno != 200 and retorno != 400:
-            return {"message": "Erro de acesso ao banco"}, 404, {}
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, {}
 
         if len(dadosTransacao) != 0:
             transacoes = '('
@@ -88,8 +91,8 @@ def trataLogin(usu_login, usu_senha):
             condicao = 'WHERE trn_identificador IN '
             condicao = condicao + transacoes
             dadosCodigo, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
-            if retorno != 200 and retorno != 400:
-                return {"message": "Erro de acesso ao banco"}, 404, {}
+            if retorno == 400:
+                return {"message": "Erro de acesso ao banco"}, 400, {}
 
             codigoTransacao = []
             for i in range(len(dadosCodigo)):
@@ -103,31 +106,40 @@ def trataLogin(usu_login, usu_senha):
     headerRetorno['Authorization'] = 'Bearer ' + token
     return {"token": token }, 200, headerRetorno
 
-def usuarioNovo():
-    if not request.json:
-        return {'"message": "Dados de entrada não fornecidos"'}, 400, {}
+def usuarioNovoLista():
+    if request.method == 'POST':
+        if request.data == '' or request.json is None:
+            return {"message": "Dados de entrada não fornecidos"}, 404, {}
+        entrada = request.json
+        usu_celular = entrada.get('phone_number')
+        usu_email = entrada.get('email')
+        usu_senha = entrada.get('password')
+        usu_nome = entrada.get('name')
+        resultadoFinal, retorno, header = trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome)
+        return resultadoFinal, retorno, header
+    elif request.method == 'GET':
+        checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+        if not checa:
+            return mensagem, 404, {}
+        
+        resultadoFinal, retorno = listaUsuario()
+        return resultadoFinal, retorno, header
 
-    entrada = request.json
-    usu_celular = entrada.get('phone_number')
-    usu_email = entrada.get('email')
-    usu_senha = entrada.get('password')
-    usu_nome = entrada.get('name')
-    resultadoFinal, retorno, header = trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome)
-    return resultadoFinal, retorno, header
+    return {"message": "Método invalido"}, 400, {}
 
 def usuarioAtual(id):
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, {}
-
-    token, dadosToken = gestaoAutenticacao.expandeToken()
-    if dadosToken['sub'] != id:
-        return {"message":"Não é possível alterar dados de outro usuário."},400, header
+        return mensagem, 404, {}
 
     if request.method == 'PATCH':
+        token, dadosToken = gestaoAutenticacao.expandeToken()
+        if dadosToken['sub'] != id:
+            return {"message": "Não é possível alterar dados de outro usuário."}, 404, header
+
         #atualização de usuário
         if not request.json:
-            return {'"message": "Dados de entrada não fornecidos"'}, 400, header
+            return {'"message": "Dados de entrada não fornecidos"'}, 404, header
 
         entrada = request.json
         usu_celular = entrada.get('phone_number')
@@ -137,36 +149,47 @@ def usuarioAtual(id):
         resultadoFinal, retorno = trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome)
         return resultadoFinal, retorno, header
     elif request.method == 'DELETE':
+        token, dadosToken = gestaoAutenticacao.expandeToken()
+        if dadosToken['sub'] != id:
+            return {"message": "Não é possível alterar dados de outro usuário."}, 404, header
+
         checa, mensagem = trataUsuarioDeletado(id)
         if not checa:
-            return mensagem, 400, header
+            return mensagem, 404, header
         return '',200, header
+    elif request.method == 'GET':
+
+        checa, mensagem, dados = usuarioEspecifico(id)
+        if not checa:
+            return {'message': 'Não foi possível recuperar dados deste usuario'}, 404, header
+        return dados, 200, header
+
     return {"message":"Método invalido"}, 400, header
 
 def usuarioInativo(id):
     checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        return mensagem, 404, ''
 
     campos = 'count(usu_identificador)'
     condicao = 'WHERE usu_identificador = ' + str(id)
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, campos)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 404, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
     if dados[0][0] == 0:
-        return {"message": "Usuário Inexistente"}, 400, header
+        return {"message": "Usuário Inexistente"}, 404, header
 
     condicao = 'WHERE usu_identificador = ' + str(id)
     valores = "usu_autenticacao = 'inativo'"
     dados, retorno, mensagemRetorno = acessoBanco.alteraDado('usu_usuario', valores, condicao)
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 404, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
     return {}, 200, {}
 
 def usuarioExistente():
     if not request.json:
-        return {'"message": "Dados de entrada não fornecidos"'}, 400, {}
+        return {'"message": "Dados de entrada não fornecidos"'}, 404, {}
 
     entrada = request.json
     usu_login = entrada.get('username')
@@ -179,9 +202,9 @@ def usuarioTokenDesativado(header):
     campos = 'count(tki_identificador)'
     dados, retorno, mensagemRetorno = acessoBanco.leDado('tki_tokeninvalidado', None, campos)
 
-    if retorno == 404:
+    if retorno == 400:
         resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-        return {"message": "Erro de acesso ao banco"}, 404, header
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if dados[0][0] == 0:
         tki_identificador = 1
@@ -189,9 +212,9 @@ def usuarioTokenDesativado(header):
         campos = 'max(tki_identificador)'
         dados, retorno, mensagemRetorno = acessoBanco.leDado('tki_tokeninvalidado', None, campos)
 
-        if retorno == 404:
+        if retorno == 400:
             resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-            return {"message": "Erro de acesso ao banco"}, 404, header
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
         tki_identificador = dados[0][0] + 1
 
@@ -199,18 +222,18 @@ def usuarioTokenDesativado(header):
     campos = 'count(usu_identificador)'
     condicao = "WHERE usu_identificador = " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, campos)
-    if retorno == 404:
+    if retorno == 400:
         resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-        return {"message": "Erro de acesso ao banco"}, 404, header
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if dados[0][0] == 0:
-        return {"message": "Usuário foi apagado da base de dados"}, 400, {}
+        return {"message": "Usuário foi apagado da base de dados"}, 404, {}
 
     campos = 'tki_identificador, usu_identificador, tki_token, tki_dataexpiracao, tki_identificadoratualizacao, tki_dataatualizacao'
     valores = str(tki_identificador) + "," + str(dadosToken['sub']) + ",'" + token + "','" + dadosToken['exp'].strftime('%Y-%m-%d %H:%M:%S')
     valores = valores + "'," + str(dadosToken['sub']) + ",'" + datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') + "'"
     resultado, retorno, mensagem = acessoBanco.insereDado('tki_tokeninvalidado', campos, valores)
-    if retorno != 201:
+    if retorno == 400:
         return {"message": "Erro no acesso ao banco"},400,header
     return {}, 200, {}
 
@@ -262,7 +285,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
             erro = True
 
     if erro:
-        return cheque, 400, {}
+        return cheque, 404, {}
 
     if usu_celular is not None:
         condicao = "WHERE usu_celular = " + str(usu_celular)
@@ -274,7 +297,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
     camposDesejados = 'usu_autenticacao'
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, camposDesejados)
 
-    if retorno == 404:
+    if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno,{}
 
     if dados != []:
@@ -284,12 +307,12 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
                 autentica = 'ativo'
         if autentica == 'ativo':
             cheque['message'] = 'Celular ou e-mail já cadastrado com usuário ativo'
-            return cheque, 400, {}
+            return cheque, 404, {}
 
     dados, retorno, header = acessoBanco.insereUsuario(usu_celular, usu_email, usu_senha, usu_nome)
     print (str(retorno))
-    if retorno != 201:
-        return {"message": "Erro no acesso ao banco de dados"}, 404, {}
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, 400, {}
 
     # gera o token
     token = gestaoAutenticacao.geraToken(dados)
@@ -302,6 +325,27 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
     headerRetorno['Authorization'] = 'Bearer ' + token
 
     return dados, 201, headerRetorno
+
+def listaUsuario():
+
+    camposDesejados = 'usu_identificador, usu_nome, usu_celular, usu_email'
+    condicao = "WHERE usu_autenticacao = 'ativo'"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, camposDesejados)
+
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    dadosRetorno = []
+    dicRetorno = {}
+    for i in range(len(dados)):
+        mensagem = {}
+        mensagem['id'] = dados[i][0]
+        mensagem['name'] = dados[i][1]
+        mensagem['phone_number'] = dados[i][2]
+        mensagem['email'] = dados[i][3]
+        dadosRetorno.append(mensagem)
+    dicRetorno['users'] = dadosRetorno
+    return dicRetorno, 200
 
 def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
 
@@ -354,26 +398,26 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
             alteracao = True
 
     if erro:
-        return cheque, 400
+        return cheque, 404
 
     if not alteracao:
         cheque['message'] = 'Não existe(m) alteração(ões) a realizar'
-        return cheque, 400
+        return cheque, 404
 
     campos = 'usu_celular, usu_email, usu_senha, usu_nome, usu_autenticacao'
     condicao = "WHERE usu_identificador = " + str(usu_identificador)
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, campos)
 
-    if retorno == 404:
+    if retorno == 400:
         return {"message": "Erro de acesso ao banco de dados"}, retorno
 
     if dados == []:
         cheque['message'] = 'Usuário não cadastrado'
-        return cheque, 400
+        return cheque, 404
 
     if dados[0][4] != 'ativo':
         cheque['message'] = 'Usuário inativo'
-        return cheque, 400
+        return cheque, 404
 
     usu_celular_ant = dados[0][0]
     usu_email_ant = dados[0][1]
@@ -395,7 +439,7 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
         campos = ("usu_identificador")
         dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, campos)
 
-        if retorno == 404:
+        if retorno == 400:
             return {"message": "Erro de acesso ao banco de dados"}, retorno
 
         if dados != []:
@@ -408,7 +452,7 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
             dicionarioRetorno['email'] = usu_email
             dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, campos)
 
-            if retorno == 404:
+            if retorno == 400:
                 return {"message": "Erro de acesso ao banco de dados"}, retorno
 
             if dados != []:
@@ -419,7 +463,7 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
                     erro = True
 
         if erro:
-            return cheque, 400
+            return cheque, 404
 
     comando_cel = ''
     comando_email = ''
@@ -450,7 +494,7 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
     comando = comando [1:] + ", usu_dataatualizacao = '" + iat + "'"
     condicao = "WHERE usu_identificador = " + str(usu_identificador)
     dados, retorno, mensagemRetorno = acessoBanco.alteraDado('usu_usuario', comando, condicao)
-    if retorno != 200:
+    if retorno == 200:
         return {"message": "Erro de acesso ao banco de dados"}, retorno
 
 
@@ -463,7 +507,7 @@ def trataUsuarioDeletado(id):
     condicao = "WHERE usu_identificador = " + str(usu_identificador)
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, None)
 
-    if retorno == 404:
+    if retorno == 400:
         return False, {"message": "Erro de acesso ao banco de dados"}
 
     if dados == []:
@@ -485,8 +529,8 @@ def inteiro(valor):
 def usuarioTransacaoValidada():
     checa, header = gestaoAutenticacao.validaToken()
     if not checa:
-        resultadoFinal = acessoBanco.montaRetorno(401, 'Token inválido ou expirado')
-        return resultadoFinal, 401, header
+        resultadoFinal = acessoBanco.montaRetorno(404, 'Token inválido ou expirado')
+        return resultadoFinal, 404, header
 
     query_parameters = request.args
     usu_login = query_parameters.get('login')
@@ -497,10 +541,10 @@ def usuarioTransacaoValidada():
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Usuário e/ou transação não fornecido(s)'
-        resultadoFinal = acessoBanco.montaRetorno(400, '')
+        resultadoFinal = acessoBanco.montaRetorno(404, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 400, header
+        return resultadoFinal, 404, header
 
     # realiza consulta no banco
     if inteiro(usu_login):
@@ -510,17 +554,17 @@ def usuarioTransacaoValidada():
     camposDesejados = 'usu_identificador'
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, camposDesejados)
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
-    if retorno == 404:
+    if retorno == 400:
         return resultadoFinal, retorno, header
 
     if dados == []:
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Usuário não cadastrado'
-        resultadoFinal = acessoBanco.montaRetorno(400, '')
+        resultadoFinal = acessoBanco.montaRetorno(404, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ' '
-        return resultadoFinal, 400, header
+        return resultadoFinal, 404, header
 
     usu_identificador = dados[0][0]
 
@@ -530,17 +574,17 @@ def usuarioTransacaoValidada():
     condicao = 'INNER JOIN usu_usuario ON usu_usuario.usu_identificador = usu_pfa_usuario_perfilacesso.usu_identificador WHERE usu_usuario.usu_identificador = '
     condicao = condicao + str(usu_identificador)
     dadosPerfil, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
-    if retorno != 200:
+    if retorno == 400:
         return resultadoFinal, retorno, header
 
     if dadosPerfil == []:
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Usuário não possui perfil associado'
-        resultadoFinal = acessoBanco.montaRetorno(400, '')
+        resultadoFinal = acessoBanco.montaRetorno(404, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ''
-        return resultadoFinal, 400, header
+        return resultadoFinal, 404, header
     else:
         perfis = ''
         for i in range(len(dadosPerfil)):
@@ -553,17 +597,17 @@ def usuarioTransacaoValidada():
     condicao = 'INNER JOIN pfa_perfilacesso ON pfa_perfilacesso.pfa_identificador = pfa_trn_perfilacesso_transacaosistema.pfa_identificador WHERE pfa_perfilacesso.pfa_identificador IN '
     condicao = condicao + '(' + perfis + ')'
     dadosTransacao, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
-    if retorno != 200:
+    if retorno == 400:
         return resultadoFinal, retorno, header
 
     if dadosTransacao == []:
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
         listaMensagem['texto'] = 'Usuário não possui perfil com transação associada'
-        resultadoFinal = acessoBanco.montaRetorno(400, '')
+        resultadoFinal = acessoBanco.montaRetorno(404, '')
         resultadoFinal['retorno'] = listaMensagem
         resultadoFinal['aresposta']['texto'] = ''
-        return resultadoFinal, 400, header
+        return resultadoFinal, 404, header
     else:
         transacoes = '('
         for i in range(len(dadosTransacao)):
@@ -576,7 +620,7 @@ def usuarioTransacaoValidada():
     condicao = 'WHERE trn_identificador IN '
     condicao = condicao + transacoes
     dadosCodigo, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
-    if retorno != 200:
+    if retorno == 400:
         return resultadoFinal, retorno, header
 
     for i in range(len(dadosCodigo)):
@@ -592,7 +636,244 @@ def usuarioTransacaoValidada():
     listaMensagem = {}
     listaMensagem['acesso'] = 'nok'
     listaMensagem['texto'] = 'Transacao não permitida para usuário'
-    resultadoFinal = acessoBanco.montaRetorno(400, '')
+    resultadoFinal = acessoBanco.montaRetorno(404, '')
     resultadoFinal['retorno'] = listaMensagem
     resultadoFinal['aresposta']['texto'] = ''
-    return resultadoFinal, 400, header
+    return resultadoFinal, 404, header
+
+def usuarioEspecifico(id):
+
+    mensagem = {}
+    dadosToken = {}
+    campo = 'usu_celular,usu_email, usu_autenticacao, usu_nome'
+    condicao = "WHERE usu_identificador = " + str(id)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, campo)
+    if retorno !=200:
+        return False, mensagemRetorno, []
+
+    dadosToken['phone_number'] = str(dados[0][0])
+    dadosToken['email'] = str(dados[0][1])
+    if  dados[0][2] ==  'ativo':
+        dadosToken['active'] = True
+    else:
+        dadosToken['active'] = False
+    dadosToken['name'] = dados[0][3]
+
+    # recupera os celulares adicionais
+    campo = 'uca_celular'
+    condicao = "WHERE usu_identificador = " + str(id)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('uca_celularadicional', condicao, campo)
+    if retorno == 400:
+        return False, mensagemRetorno, []
+    codigo = []
+    for i in range(len(dados)):
+        codigo.append(str(dados[i][0]))
+    codigo = list(set(codigo))
+    dadosToken['phone_others'] = codigo
+
+    # recupera os emails adicionais
+    campo = 'uea_email'
+    condicao = "WHERE usu_identificador = " + str(id)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('uea_emailadicional', condicao, campo)
+    if retorno == 400:
+        return False, {'message':'Erro de acesso ao banco'}, []
+    codigo = []
+    for i in range(len(dados)):
+        codigo.append(dados[i][0])
+    codigo = list(set(codigo))
+    dadosToken['email_others'] = codigo
+
+    #recupera os perfis de acesso
+    camposDesejados = 'pfa_perfilacesso.pfa_identificador, pfa_descricao'
+    condicao = "INNER JOIN pfa_perfilacesso ON  usu_pfa_usuario_perfilacesso.pfa_identificador = pfa_perfilacesso.pfa_identificador "
+    condicao = condicao + "where usu_identificador =  " + str(id)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_pfa_usuario_perfilacesso', condicao, camposDesejados)
+    if retorno == 400:
+        return False, {'message':'Erro de acesso ao banco'}, []
+    print(dados)
+    sigla = []
+    nome = []
+    for i in range(len(dados)):
+        sigla.append(dados[i][0])
+        nome.append(dados[i][1])
+    dadosToken['user_role_ids'] = sigla
+    dadosToken['user_role_names'] = nome
+
+    #recupera os empreendimentos
+    camposDesejados = 'emp_sigla, emp_nome,  usu_emp_usuario_empreendimento.emp_identificador'
+    condicao = "INNER JOIN emp_empreendimento ON  usu_emp_usuario_empreendimento.emp_identificador = emp_empreendimento.emp_identificador "
+    condicao = condicao + "where usu_identificador =  " + str(id)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_emp_usuario_empreendimento', condicao, camposDesejados)
+    if retorno == 400:
+        return False, {'message':'Erro de acesso ao banco'}, []
+    print(dados)
+    sigla = []
+    nome = []
+    codigo = []
+    for i in range(len(dados)):
+        sigla.append(dados[i][0])
+        nome.append(dados[i][1])
+        codigo.append(str(dados[i][2]))
+    dadosToken['site_codes'] = sigla
+    dadosToken['site_names'] = nome
+    dadosToken['site_ids'] = codigo
+
+    #recupera os perfis de usuario
+    camposDesejados = 'pfu_sigla, pfu_descricao'
+    condicao = "INNER JOIN pfu_perfilusuario ON  usu_pfu_usuario_perfilusuario.pfu_identificador = pfu_perfilusuario.pfu_identificador "
+    condicao = condicao + "where usu_identificador =  " + str(id)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_pfu_usuario_perfilusuario', condicao, camposDesejados)
+    if retorno == 400:
+        return False, {'message':'Erro de acesso ao banco'}, []
+    print(dados)
+    sigla = []
+    nome = []
+    for i in range(len(dados)):
+        sigla.append(dados[i][0])
+        nome.append(dados[i][1])
+    dadosToken['trainning_codes'] = sigla
+    dadosToken['trainning_names'] = nome
+
+    #prepara a volta
+
+    return True, 200, dadosToken
+
+def usuarioRecuperaSenha():
+    if not request.json:
+        return {'"message": "Dados de entrada não fornecidos"'}, 400, {}
+
+    entrada = request.json
+    usu_login = entrada.get('username')
+
+    if usu_login is None:
+        return {"message": "Parâmetro não fonecido"}, 404, {}
+    if acessoBanco.inteiro(usu_login):
+        condicao = "WHERE usu_celular = " + str(usu_login)
+    else:
+        condicao = "WHERE usu_email = '" + usu_login + "'"
+
+    camposDesejados = 'usu_identificador, usu_celular, usu_email, usu_nome, usu_autenticacao'
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_usuario', condicao, camposDesejados)
+
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco de dados"},400,{}
+
+    if dados == []:
+        return {"message": "Usuário não cadastrado"}, 404, {}
+
+    if dados[0][4] != "ativo":
+        return {"message": "Usuário inativo não pode recuperar senha. O cadastro deve ser refeito."}, 404, {}
+
+    body_mensagem = {}
+    lista_urns = []
+    texto = "mailto:" + dados[0][2]
+    lista_urns.append(texto)
+    texto = "tel: +55" + str(dados[0][1])
+    lista_urns.append(texto)
+    body_mensagem["urns"] = lista_urns
+    dic_codigo = {}
+    codigo = randint(100000, 999999)
+    dic_codigo["codigo"] = codigo
+    body_mensagem["params"] = dic_codigo
+    body_mensagem["flow"] = config.FLOW_MENSAGEM
+    body = json.dumps(body_mensagem)
+    print(body)
+    header = {}
+    header["Authorization"] = config.HEADER_MENSAGEM
+    header["Content-Type"] = "application/json"
+    print(header)
+    res = requests.post(config.CAMINHO_MENSAGEM, data=body, headers = header)
+    print (res.status_code)
+    if res.status_code != 201:
+        return {"message": "Não foi possível enviar o código"}, 404, {}
+
+
+    dadosNovo, retorno, header = novoToken(dados[0][0], dados[0][1], dados[0][2],  dados[0][3])
+    print (str(retorno))
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, 400, {}
+
+    # gera o token
+    token = gestaoAutenticacao.geraToken(dadosNovo)
+
+    headerRetorno = {}
+    headerRetorno['Authorization'] = 'Bearer ' + token
+
+    mensagem = {}
+    mensagem["code"] = codigo
+    mensagem["id"] = dados[0][0]
+    mensagem['phone_number'] = dados[0][1]
+    mensagem['email'] = dados[0][2]
+    mensagem['name'] = dados[0][3]
+
+    return mensagem, 200, headerRetorno
+
+def novoToken(usu_identificador, usu_celular, usu_email,  usu_nome):
+
+    # trata dos dados recebidos
+    agora = datetime.datetime.utcnow()
+
+
+    dicionarioRetorno = {}
+    dicionarioRetorno['sub'] = usu_identificador
+    dicionarioRetorno['id'] = usu_identificador
+    dicionarioRetorno['name'] = usu_nome
+    dicionarioRetorno['iat'] = agora
+    dicionarioRetorno['exp'] = ''
+    dicionarioRetorno['user_role_ids'] = []
+    dicionarioRetorno['allowed_transactions'] = []
+    dicionarioRetorno['email'] = usu_email
+    dicionarioRetorno['phone_number'] = usu_celular
+    dicionarioRetorno['active'] = True
+
+    #recupera os perfis associados
+    camposdesejados = 'usu_pfa_usuario_perfilacesso.pfa_identificador'
+    tabela = 'usu_pfa_usuario_perfilacesso'
+    condicao = 'INNER JOIN usu_usuario ON usu_usuario.usu_identificador = usu_pfa_usuario_perfilacesso.usu_identificador WHERE usu_usuario.usu_identificador = '
+    condicao = condicao + str(usu_identificador)
+
+    dadosPerfil, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
+    if retorno != 200:
+        return {}, retorno, {}
+
+    if len(dadosPerfil) != 0:
+        perfis =''
+        listaPerfis = []
+        for i in range(len(dadosPerfil)):
+            perfis = perfis + str(dadosPerfil[i][0]) + ','
+            listaPerfis.append(str(dadosPerfil[i][0]))
+        perfis = perfis[0:-1]
+        dicionarioRetorno['user_role_ids'] = listaPerfis
+
+    #recupera as transacoes associadas
+        camposdesejados = 'pfa_trn_perfilacesso_transacaosistema.trn_identificador'
+        tabela = 'pfa_trn_perfilacesso_transacaosistema'
+        condicao = 'INNER JOIN pfa_perfilacesso ON pfa_perfilacesso.pfa_identificador = pfa_trn_perfilacesso_transacaosistema.pfa_identificador WHERE pfa_perfilacesso.pfa_identificador IN '
+        condicao = condicao + '(' + perfis + ')'
+        dadosTransacao, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, {}
+
+        if len(dadosTransacao) != 0:
+            transacoes = '('
+            for i in range(len(dadosTransacao)):
+                transacoes = transacoes + str(dadosTransacao[i][0]) + ','
+            transacoes = transacoes[0:-1] + ')'
+            print(transacoes)
+        #recupera o código das transações associadas
+            camposdesejados = 'trn_codigo'
+            tabela = 'trn_transacaosistema'
+            condicao = 'WHERE trn_identificador IN '
+            condicao = condicao + transacoes
+            dadosCodigo, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposdesejados)
+            if retorno == 400:
+                return {"message": "Erro de acesso ao banco"}, 400, {}
+
+            codigoTransacao = []
+            for i in range(len(dadosCodigo)):
+                codigoTransacao.append( dadosCodigo[i][0] )
+            codigoTransacao = list(set(codigoTransacao))
+            dicionarioRetorno['allowed_transactions'] = codigoTransacao
+
+
+    return dicionarioRetorno, 200,{}

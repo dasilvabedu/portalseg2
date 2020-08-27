@@ -38,7 +38,7 @@ def dado(tabela, condicao=None, camposDesejados=None, limite = None):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -52,7 +52,7 @@ def dado(tabela, condicao=None, camposDesejados=None, limite = None):
                 campos = campos + rec[0] + ','
             if campos == '':
                 cur.close()
-                return [], 400, 'Tabela não encontrada'
+                return [], 404, 'Tabela não encontrada'
             campos = campos[0:-1]
         else:
             campos = camposDesejados
@@ -89,7 +89,7 @@ def dado(tabela, condicao=None, camposDesejados=None, limite = None):
             return resultado, 200, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -103,7 +103,7 @@ def alteraDado(tabela, valores, condicao=None):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -121,7 +121,7 @@ def alteraDado(tabela, valores, condicao=None):
         return resultado, 200, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -135,7 +135,7 @@ def alteraDadoMultiplo(tabela, valores, condicao=None):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -155,7 +155,7 @@ def alteraDadoMultiplo(tabela, valores, condicao=None):
     except (Exception, psycopg2.DatabaseError) as error:
         conn.roolback()
         cur.close()
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -172,7 +172,7 @@ def leDado(tabela, condicao=None, camposDesejados=None):
         #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -195,12 +195,12 @@ def leDado(tabela, condicao=None, camposDesejados=None):
     # encerra conexao ao PostgreSQL
         cur.close()
         if resultado == []:
-            return [], 400, 'Tabela e/ou campos inexistentes'
+            return [], 404, 'Tabela e/ou campos inexistentes'
         else:
             return resultado, 200, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -213,7 +213,7 @@ def insereDado(tabela, camposDesejados=None, valores=None):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -229,7 +229,7 @@ def insereDado(tabela, camposDesejados=None, valores=None):
         return resultado, 201, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -243,7 +243,7 @@ def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
 
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -261,7 +261,7 @@ def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
     except (Exception, psycopg2.DatabaseError) as error:
         conn.roolback()
         cur.close()
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
 
     finally:
         if conn is not None:
@@ -276,7 +276,7 @@ def exclueDado(tabela, condicao):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -291,7 +291,7 @@ def exclueDado(tabela, condicao):
         for rec in recset:
             resultado.append(rec)
         if resultado == []:
-            return [], 400, 'Tabela e/ou identificador inexistentes'
+            return [], 404, 'Tabela e/ou identificador inexistentes'
 
     # execucao de comando
         comando = "DELETE FROM " + tabela
@@ -307,7 +307,7 @@ def exclueDado(tabela, condicao):
         return resultado, 200, ""
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -322,7 +322,7 @@ def exclueDadoMultiplo(tabela, condicao):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -342,7 +342,7 @@ def exclueDadoMultiplo(tabela, condicao):
     except (Exception, psycopg2.DatabaseError) as error:
         conn.roolback()
         cur.close()
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -360,7 +360,7 @@ def executaDadoMultiplo(comando):
         #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -378,7 +378,7 @@ def executaDadoMultiplo(comando):
     except (Exception, psycopg2.DatabaseError) as error:
         conn.roolback()
         cur.close()
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -396,7 +396,7 @@ def executaComando(comando):
         #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -412,7 +412,7 @@ def executaComando(comando):
 
     except (Exception, psycopg2.DatabaseError) as error:
         cur.close()
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -428,7 +428,7 @@ def exclueMetadado(tabela):
         #conn = psycopg2.connect(database_url, sslmode='require')
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -454,12 +454,12 @@ def exclueMetadado(tabela):
     # encerra conexao ao PostgreSQL
         cur.close()
         if resultado == []:
-            return [], 400, 'Tabela e/ou campos inexistentes'
+            return [], 404, 'Tabela e/ou campos inexistentes'
         else:
             return resultado, 200, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -473,7 +473,7 @@ def insereMetadado(tabela, atual_data, atual_usuario):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -494,7 +494,7 @@ def insereMetadado(tabela, atual_data, atual_usuario):
             dadosAtributo.append(apoio)
         if dadosAtributo == '':
             cur.close()
-            return [], 400, 'Tabela não encontrada'
+            return [], 404, 'Tabela não encontrada'
 
     # Recupera o ultimo valor dos identficadores
         comandoMetadado = "SELECT max(mtt_identificador) FROM mtt_metadadotabela"
@@ -531,12 +531,12 @@ def insereMetadado(tabela, atual_data, atual_usuario):
     # encerra conexao ao PostgreSQL
         cur.close()
         if resultado == []:
-            return [], 400, 'Dados inexistentes com estes parâmetros'
+            return [], 404, 'Dados inexistentes com estes parâmetros'
         else:
             return resultado, 201, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -551,7 +551,7 @@ def exclueMetadadoAtributo(lista):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
     # criacao de cursor
         cur = conn.cursor()
 
@@ -577,12 +577,12 @@ def exclueMetadadoAtributo(lista):
     # encerra conexao ao PostgreSQL
         cur.close()
         if resultado == []:
-            return [], 400, 'Dados inexistentes com estes parâmetros'
+            return [], 404, 'Dados inexistentes com estes parâmetros'
         else:
             return resultado, 201, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -596,7 +596,7 @@ def insereMetadadoAtributo(lista, atual_data, atual_usuario):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
 
         # criacao de cursor
         cur = conn.cursor()
@@ -620,7 +620,7 @@ def insereMetadadoAtributo(lista, atual_data, atual_usuario):
                 dadosAtributo.append(apoio)
             if dadosAtributo == []:
                 cur.close()
-                return [], 400, 'Tabela não encontrada'
+                return [], 404, 'Tabela não encontrada'
 
             # Recupera o identificador da tabela
             comandoTabela = "SELECT mtt_identificador FROM mtt_metadadotabela WHERE mtt_tabela = '" + tabela + "'"
@@ -652,12 +652,12 @@ def insereMetadadoAtributo(lista, atual_data, atual_usuario):
         # encerra conexao ao PostgreSQL
         cur.close()
         if resultado == []:
-            return [], 400, 'Dados inexistentes com estes parâmetros'
+            return [], 404, 'Dados inexistentes com estes parâmetros'
         else:
             return resultado, 201, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -692,11 +692,11 @@ def montaRetorno(retorno, mensagemRetorno):
         mensagem['mensagem'] = 'Requisicao plenamente atendida'
     elif retorno == 201:
         mensagem['mensagem'] = 'Registro incluido'
-    elif retorno == 400:
+    elif retorno == 404:
         mensagem['mensagem'] = 'Erro: condições de acesso inválidas'
     elif retorno == 401:
         mensagem['mensagem'] = 'Erro: acesso não autorizado'
-    elif retorno == 404:
+    elif retorno == 400:
         mensagem['mensagem'] = 'Erro: acesso banco de dados'
     else:
         mensagem['mensagem'] = 'Erro: não identificado'
@@ -745,7 +745,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
         conn = psycopg2.connect(database_url)
 
         if conn is None:
-            return [], 404, "Conexão ao banco falhou"
+            return [], 400, "Conexão ao banco falhou"
 
         # criacao de cursor
         cur = conn.cursor()
@@ -797,7 +797,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
         condicao = 'INNER JOIN pfa_perfilacesso ON pfa_perfilacesso.pfa_identificador = pfa_trn_perfilacesso_transacaosistema.pfa_identificador WHERE pfa_perfilacesso.pfa_identificador = 2'
 
         dadosTransacao, retorno, mensagemRetorno = leDado(tabela, condicao, camposdesejados)
-        if retorno == 404:
+        if retorno == 400:
             resultadoFinal = montaRetorno(retorno, mensagemRetorno)
             return resultadoFinal, retorno, ''
 
@@ -816,7 +816,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
         condicao = 'WHERE trn_identificador IN '
         condicao = condicao + transacoes
         dadosCodigo, retorno, mensagemRetorno = leDado(tabela, condicao, camposdesejados)
-        if retorno != 200:
+        if retorno == 400:
             resultadoFinal = montaRetorno(retorno, mensagemRetorno)
             return resultadoFinal, retorno, ''
 
@@ -828,20 +828,16 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
 
         conn.commit()
 
-        return dicionarioRetorno, retorno, ''
-
         # encerra conexao ao PostgreSQL
 
         cur.close()
 
-        resultado = {}
-        resultado['usu_identificador'] = proximoNumero
-        return resultado, 201, ''
+        return dicionarioRetorno, 201, ''
 
     except (Exception, psycopg2.DatabaseError) as error:
         conn.roolback()
         conn.close()
-        return [], 404, 'Erro do sistema: ' + str(error)
+        return [], 400, 'Erro do sistema: ' + str(error)
     finally:
         if conn is not None:
             conn.close()
@@ -885,4 +881,18 @@ def exclueUsuario(usu_identificador):
     finally:
         if conn is not None:
             conn.close()
+
+def inteiro(valor):
+    try:
+         int(valor)
+    except ValueError:
+         return False
+    return True
+
+def real(value):
+    try:
+         float(value)
+    except ValueError:
+         return False
+    return True
 

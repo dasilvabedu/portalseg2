@@ -116,7 +116,7 @@ def invalidaToken(token, dadosToken, header):
     # recupera o próximo identificador
     campo = 'max(tki_identificador)'
     dados, retorno, mensagemRetorno = acessoBanco.leDado('tki_tokeninvalidado', None, campo)
-    if retorno != 200:
+    if retorno == 400:
         resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
         return resultadoFinal, retorno, {}
     if dados[0][0] is None:
@@ -170,7 +170,7 @@ def complementaToken(existe=None):
     campo = 'uca_celular'
     condicao = "WHERE usu_identificador = " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('uca_celularadicional', condicao, campo)
-    if retorno == 404:
+    if retorno == 400:
         return {'message':'Erro de acesso ao banco'}, 400, header
     codigo = []
     for i in range(len(dados)):
@@ -182,7 +182,7 @@ def complementaToken(existe=None):
     campo = 'uea_email'
     condicao = "WHERE usu_identificador = " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('uea_emailadicional', condicao, campo)
-    if retorno == 404:
+    if retorno == 400:
         return {'message':'Erro de acesso ao banco'}, 400, header
     codigo = []
     for i in range(len(dados)):
@@ -196,7 +196,7 @@ def complementaToken(existe=None):
         campo = 'pfa_descricao'
         condicao = "WHERE pfa_identificador = " + perfil
         dados, retorno, mensagemRetorno = acessoBanco.leDado('pfa_perfilacesso', condicao, campo)
-        if retorno != 200:
+        if retorno == 400:
             return {'message':'Erro de acesso ao banco'}, 400, header
         codigo.append(dados[0][0])
     dadosToken['user_role_names'] = codigo
@@ -206,7 +206,8 @@ def complementaToken(existe=None):
     condicao = "INNER JOIN emp_empreendimento ON  usu_emp_usuario_empreendimento.emp_identificador = emp_empreendimento.emp_identificador "
     condicao = condicao + "where usu_identificador =  " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_emp_usuario_empreendimento', condicao, camposDesejados)
-    print(dados)
+    if retorno == 400:
+        return {'message': 'Erro de acesso ao banco'}, 400, header
     sigla = []
     nome = []
     codigo = []
@@ -223,7 +224,8 @@ def complementaToken(existe=None):
     condicao = "INNER JOIN pfu_perfilusuario ON  usu_pfu_usuario_perfilusuario.pfu_identificador = pfu_perfilusuario.pfu_identificador "
     condicao = condicao + "where usu_identificador =  " + str(dadosToken['sub'])
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_pfu_usuario_perfilusuario', condicao, camposDesejados)
-    print(dados)
+    if retorno == 400:
+        return {'message': 'Erro de acesso ao banco'}, 400, header
     sigla = []
     nome = []
     for i in range(len(dados)):

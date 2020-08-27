@@ -14,8 +14,8 @@ def rotasOrdenadas(uhe):
     condicao = "WHERE emp_identificador = " + str(uhe)
     dadosPAE, retorno, mensagemRetorno = acessoBanco.leDado('pae_planoacaoemergencia', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPAE) == 0:
         return {"message": "Esta UHE não possui Plano de Ação de Emergência."}, 400, header
@@ -24,11 +24,11 @@ def rotasOrdenadas(uhe):
     condicao = "WHERE pae_identificador = " + str(dadosPAE[0][0])
     dadosRota, retorno, mensagemRetorno = acessoBanco.leDado('rot_rotaevacuacao', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosRota) == 0:
-        return {"message": "Esta UHE não possui rota de evacuação definida."}, 400, header
+        return {"message": "Esta UHE não possui rota de evacuação definida."}, 404, header
 
     corpoMensagem = {}
     montaRota = []
@@ -45,11 +45,11 @@ def rotasOrdenadas(uhe):
         condicao = "INNER JOIN tro_trechorotaevacuacao ON rot_tro_rotaevacuacao_trechorotaevacuacao.tro_identificador =  tro_trechorotaevacuacao.tro_identificador WHERE rot_tro_rotaevacuacao_trechorotaevacuacao.rot_identificador =" + str(dadosRota[i][0])
         dadosTrecho, retorno, mensagemRetorno = acessoBanco.leDado('rot_tro_rotaevacuacao_trechorotaevacuacao', condicao, camposDesejados)
 
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
         if len(dadosTrecho) == 0:
-            return {"message": "Esta UHE não possui trechos de rota de evacuação."}, 400, header
+            return {"message": "Esta UHE não possui trechos de rota de evacuação."}, 404, header
         for j in range(len(dadosTrecho)):
             trecho.append(dadosTrecho[j][0])
             trecho_anterior.append(dadosTrecho[j][1])
@@ -58,12 +58,12 @@ def rotasOrdenadas(uhe):
         camposDesejados = 'rot_pns_rotaevacuacao_pontoseguranca.pns_identificador, pns_identificacao,ST_AsText(pns_pontoseguranca.geom), ST_AsText(ST_Transform(pns_pontoseguranca.geom,4326))'
         condicao = "INNER JOIN pns_pontoseguranca ON rot_pns_rotaevacuacao_pontoseguranca.pns_identificador = pns_pontoseguranca.pns_identificador WHERE rot_pns_rotaevacuacao_pontoseguranca.rot_identificador = " + str(dadosRota[i][0])
         dadosPonto, retorno, mensagemRetorno = acessoBanco.leDado('rot_pns_rotaevacuacao_pontoseguranca', condicao, camposDesejados)
-
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        print(dadosPonto)
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
         if len(dadosPonto) == 0:
-            return {"message": "Esta UHE não possui pontos de segurança."}, 400, header
+            return {"message": "Esta UHE não possui pontos de segurança."}, 404, header
         detalhePontos = {}
         detalhePontos['id_ponto'] = int(dadosPonto[0][0])
         detalhePontos['nome_ponto'] = dadosPonto[0][1]
@@ -71,8 +71,8 @@ def rotasOrdenadas(uhe):
         y = dadosPonto[0][2].split(' ')[1][:-1]
         detalhePontos["x"] = float(x)
         detalhePontos["y"] = float(y)
-        lat = dadosPonto[0][3].split(' ')[0][6:]
-        long = dadosPonto[0][3].split(' ')[1][:-1]
+        lat = dadosPonto[0][3].split(' ')[1][:-1]
+        long = dadosPonto[0][3].split(' ')[0][6:]
         detalhePontos["lat"] = float(lat)
         detalhePontos["long"] = float(long)
         mensagemRota["ponto_seguranca"] = detalhePontos
@@ -109,11 +109,11 @@ def pontosUHE(uhe):
     condicao = condicao + " and usu_identificador = " + str(usu_identificador)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
     print(dadosPontos)
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPontos) == 0:
-        return {"message": "Este usuário não possui Pontos de Interesse para esta UHE."}, 400, header
+        return {"message": "Este usuário não possui Pontos de Interesse para esta UHE."}, 404, header
 
 # monta resposta
     dadosFinais = []
@@ -126,8 +126,8 @@ def pontosUHE(uhe):
         y = dadosPontos[i][3].split(' ')[1][:-1]
         mensagemPontos["x"] = float(x)
         mensagemPontos["y"] = float(y)
-        lat = dadosPontos[i][4].split(' ')[0][6:]
-        long = dadosPontos[i][4].split(' ')[1][:-1]
+        lat = dadosPontos[i][4].split(' ')[1][:-1]
+        long = dadosPontos[i][4].split(' ')[0][6:]
         mensagemPontos["lat"] = float(lat)
         mensagemPontos["long"] = float(long)
         dadosFinais.append(mensagemPontos)
@@ -150,15 +150,15 @@ def pontosUsuario():
         condicao = "WHERE usu_identificador = " + str(usu_identificador)
         dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse', condicao, camposDesejados)
 
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
         if len(dadosPontos) == 0:
             dadosFinais = []
             corpoMensagem = {}
             corpoMensagem['pontos'] = dadosFinais
             corpoMensagem['message'] = "Este usuário não possui Pontos de Interesse cadastrados."
-            return corpoMensagem, 200, header
+            return corpoMensagem, 404, header
 
     # monta resposta
         dadosFinais = []
@@ -171,8 +171,8 @@ def pontosUsuario():
             y = dadosPontos[i][3].split(' ')[1][:-1]
             mensagemPontos["x"] = float(x)
             mensagemPontos["y"] = float(y)
-            lat = dadosPontos[i][4].split(' ')[0][6:]
-            long = dadosPontos[i][4].split(' ')[1][:-1]
+            lat = dadosPontos[i][4].split(' ')[1][:-1]
+            long = dadosPontos[i][4].split(' ')[0][6:]
             mensagemPontos["lat"] = float(lat)
             mensagemPontos["long"] = float(long)
             dadosFinais.append(mensagemPontos)
@@ -182,12 +182,9 @@ def pontosUsuario():
         return corpoMensagem, 200, header
 
     elif request.method == 'POST':
+        print ("to ca")
         entrada = request.json
         print (entrada)
-        pni_descricao = None
-        pni_endereco = None
-        x = None
-        y = None
 
         pni_descricao = entrada.get('descricao')
         pni_endereco = entrada.get('endereco')
@@ -209,11 +206,11 @@ def pontosAtual(id_ponto):
     condicao = "where pni_identificador =  " + str(id_ponto) + " and usu_identificador = " + str(usu_identificador)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPontos) == 0:
-        return {"message": "Ponto de Análise inexistente para este usuário"}, 400, header
+        return {"message": "Ponto de Análise inexistente para este usuário"}, 404, header
 
 
     if request.method == 'GET':
@@ -226,8 +223,8 @@ def pontosAtual(id_ponto):
         y = dadosPontos[0][3].split(' ')[1][:-1]
         mensagemPontos["x"] = float(x)
         mensagemPontos["y"] = float(y)
-        lat = dadosPontos[0][4].split(' ')[0][6:]
-        long = dadosPontos[0][4].split(' ')[1][:-1]
+        lat = dadosPontos[0][4].split(' ')[1][:-1]
+        long = dadosPontos[0][4].split(' ')[0][6:]
         mensagemPontos["lat"] = float(lat)
         mensagemPontos["long"] = float(long)
         corpoMensagem = {}
@@ -271,16 +268,16 @@ def pontosAtual(id_ponto):
                     erro = True
 
         if erro:
-            return {"message": mensagemErro}, 400, header
+            return {"message": mensagemErro}, 404, header
 
         if len(valores) == 1:
-            return {"message": "Nenhuma informação para alteração foi enviada."}, 400, header
+            return {"message": "Nenhuma informação para alteração foi enviada."}, 404, header
         else:
             valores = valores [1:-1]
             dados, retorno, header = acessoBanco.alteraDado('pni_pontointeresse', valores, condicao)
 
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
         corpoMensagem = {}
         corpoMensagem['pontos'] = mensagemPontos
@@ -291,8 +288,8 @@ def pontosAtual(id_ponto):
         condicao = "WHERE pni_identificador = " + str(id_ponto)
         dadosPontos, retorno, mensagemRetorno = acessoBanco.exclueDado('pni_pontointeresse', condicao)
 
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
         return {}, 200, header
 
@@ -310,19 +307,19 @@ def pontosUHEAnalise(uhe):
     condicao = condicao + " and usu_identificador = " + str(usu_identificador)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPontos) == 0:
-        return {"message": "Este usuário não possui Pontos de Interesse para esta UHE."}, 400, header
+        return {"message": "Este usuário não possui Pontos de Interesse para esta UHE."}, 404, header
 
     #verifica a situação com relação à ZAS
     camposDesejados = 'pae_identificador'
     condicao = "WHERE emp_identificador = " + str(uhe)
     dadosPAE, retorno, mensagemRetorno = acessoBanco.leDado('pae_planoacaoemergencia', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPAE) == 0:
         dadosPontosZAS = []
@@ -334,8 +331,8 @@ def pontosUHEAnalise(uhe):
         condicao = condicao + " and usu_identificador = " + str(usu_identificador)
         dadosPontosZAS, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,zas_zonaautossalvamento', condicao, camposDesejados)
 
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
     # verifica a situação com relação à ZSS
 
@@ -344,8 +341,8 @@ def pontosUHEAnalise(uhe):
         condicao = condicao + " and usu_identificador = " + str(usu_identificador)
         dadosPontosZSS, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,zss_zonasecundaria', condicao, camposDesejados)
 
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
 # monta os dicionários
     listaZAS= []
@@ -359,8 +356,8 @@ def pontosUHEAnalise(uhe):
     camposDesejados = 'vaz_identificador, vaz_datahora, vaz_vazaoconsiderada'
     condicao = "WHERE emp_identificador = " + str(uhe) + " order by vaz_datahora"
     dadosVazao, retorno, mensagemRetorno = acessoBanco.leDado('vaz_vazaodefluente', condicao, camposDesejados)
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
     print(dadosVazao)
     menorData = datetime.datetime.strptime("2900-12-31 23:59:59", '%Y-%m-%d %H:%M:%S')
     maiorData = datetime.datetime.strptime("2000-01-01 00:00:00", '%Y-%m-%d %H:%M:%S')
@@ -386,8 +383,8 @@ def pontosUHEAnalise(uhe):
         condicao = condicao + " and usu_identificador = " + str(usu_identificador) + " and man_vazao in " + vazoes
         dadosPontoSosem, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,man_manchainundacao', condicao,
                                                                       camposDesejados)
-        if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
         print(dadosPontoSosem)
         listaSosem = []
         dataSosem = []
@@ -429,8 +426,8 @@ def pontosUHEAnalise(uhe):
         y = dadosPontos[i][3].split(' ')[1][:-1]
         mensagemPontos["x"] = float(x)
         mensagemPontos["y"] = float(y)
-        lat = dadosPontos[i][4].split(' ')[0][6:]
-        long = dadosPontos[i][4].split(' ')[1][:-1]
+        lat = dadosPontos[i][4].split(' ')[1][:-1]
+        long = dadosPontos[i][4].split(' ')[0][6:]
         mensagemPontos["lat"] = float(lat)
         mensagemPontos["long"] = float(long)
         dadosFinais.append(mensagemPontos)
@@ -463,11 +460,11 @@ def vazaoEspecifica():
     condicao = condicao + " and usu_identificador = " + str(usu_identificador)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,aoi_areainteresse', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPontos) == 0:
-        return {"message": "Este usuário não possui Pontos de Interesse cadastrados."}, 400, header
+        return {"message": "Este usuário não possui Pontos de Interesse cadastrados."}, 404, header
 
     # verifica a situação com relação ao Sosem
     camposDesejados = 'pni_identificador, pni_descricao, man_identificador'
@@ -475,8 +472,8 @@ def vazaoEspecifica():
     condicao = condicao + " and usu_identificador = " + str(usu_identificador) + " and man_vazao = " + vazao
     dadosPontoSosem, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,man_manchainundacao', condicao,
                                                                   camposDesejados)
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
     print(dadosPontoSosem)
 
     listaSosem = []
@@ -499,8 +496,8 @@ def vazaoEspecifica():
         y = dadosPontos[i][3].split(' ')[1][:-1]
         mensagemPontos["x"] = float(x)
         mensagemPontos["y"] = float(y)
-        lat = dadosPontos[i][4].split(' ')[0][6:]
-        long = dadosPontos[i][4].split(' ')[1][:-1]
+        lat = dadosPontos[i][4].split(' ')[1][:-1]
+        long = dadosPontos[i][4].split(' ')[0][6:]
         mensagemPontos["lat"] = float(lat)
         mensagemPontos["long"] = float(long)
         dadosFinais.append(mensagemPontos)
@@ -522,8 +519,8 @@ def vazoesTotal(uhe):
     camposDesejados = 'vaz_identificador, vaz_datahora, vaz_vazaoprevista, vaz_situacaososem, vaz_vazaoconsiderada'
     condicao = "WHERE emp_identificador = " + str(uhe) + " order by vaz_datahora"
     dadosVazao, retorno, mensagemRetorno = acessoBanco.leDado('vaz_vazaodefluente', condicao, camposDesejados)
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
     print(dadosVazao)
     menorData = datetime.datetime.strptime("2900-12-31 23:59:59", '%Y-%m-%d %H:%M:%S')
     maiorData = datetime.datetime.strptime("2000-01-01 00:00:00", '%Y-%m-%d %H:%M:%S')
@@ -572,22 +569,22 @@ def rotaPontoEspecifico(ponto):
     condicao = "where pni_identificador =  " + str(ponto)
     dadosPontos, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPontos) == 0:
-        return {"message": "Ponto de Análiste inexistente."}, 400, header
+        return {"message": "Ponto de Análiste inexistente."}, 404, header
 
     #verifica a situação com relação à ZAS
     camposDesejados = 'pni_identificador, pni_descricao, zas_identificador, zas_texto, pae_identificador'
     condicao = "where ST_Within(pni_pontointeresse.geom,zas_zonaautossalvamento.geom) and pni_identificador =  " + str(ponto)
     dadosPontosZAS, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse,zas_zonaautossalvamento', condicao, camposDesejados)
 
-    if retorno == 404:
-            return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPontosZAS) == 0:
-        return {"message": "Ponto de Análise não está na ZAS."}, 400, header
+        return {"message": "Ponto de Análise não está na ZAS."}, 404, header
 
     print(dadosPontosZAS)
     print(dadosPontos)
@@ -599,8 +596,8 @@ def rotaPontoEspecifico(ponto):
     y = dadosPontos[0][1].split(' ')[1][:-1]
     detalhePontoAnalise["x"] = float(x)
     detalhePontoAnalise["y"] = float(y)
-    lat = dadosPontos[0][2].split(' ')[0][6:]
-    long = dadosPontos[0][2].split(' ')[1][:-1]
+    lat = dadosPontos[0][2].split(' ')[1][:-1]
+    long = dadosPontos[0][2].split(' ')[0][6:]
     detalhePontoAnalise["lat"] = float(lat)
     detalhePontoAnalise["long"] = float(long)
     mensagemPontoEspecifico["ponto_analise"] = detalhePontoAnalise
@@ -612,22 +609,22 @@ def rotaPontoEspecifico(ponto):
     condicao = "where pni_pontointeresse.pni_identificador = " + str(ponto) + " order by distancia limit 1 "
     dadosPontosRota, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse, tro_trechorotaevacuacao', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosPontosRota) == 0:
-        return {"message": "Não foi localizada Rota de Evacuação para este Ponto de Análise."}, 400, header
+        return {"message": "Não foi localizada Rota de Evacuação para este Ponto de Análise."}, 404, header
 
     #recupera uma rota que contenha o trecho
     camposDesejados = 'rot_identificador'
     condicao = "WHERE tro_identificador = " + str(dadosPontosRota[0][2])
     dadosRota, retorno, mensagemRetorno = acessoBanco.leDado('rot_tro_rotaevacuacao_trechorotaevacuacao', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosRota) == 0:
-        return {"message": "Não foi localizada a Rota de Evacuação."}, 400, header
+        return {"message": "Não foi localizada a Rota de Evacuação."}, 404, header
 
     #recupera os trechos de rota
     trecho = []
@@ -643,11 +640,11 @@ def rotaPontoEspecifico(ponto):
     dadosTrecho, retorno, mensagemRetorno = acessoBanco.leDado('rot_tro_rotaevacuacao_trechorotaevacuacao', condicao,
                                                                camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosTrecho) == 0:
-        return {"message": "Esta UHE não possui trechos de rota de evacuação."}, 400, header
+        return {"message": "Esta UHE não possui trechos de rota de evacuação."}, 404, header
 
     for j in range(len(dadosTrecho)):
         trecho.append(dadosTrecho[j][0])
@@ -676,11 +673,11 @@ def rotaPontoEspecifico(ponto):
     dadosPonto, retorno, mensagemRetorno = acessoBanco.leDado('rot_pns_rotaevacuacao_pontoseguranca', condicao,
                                                               camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
     print(dadosPonto)
     if len(dadosPonto) == 0:
-        return {"message": "Esta UHE não possui pontos de segurança."}, 400, header
+        return {"message": "Esta UHE não possui pontos de segurança."}, 404, header
     detalhePontoSeguranca = {}
     detalhePontoSeguranca['id_ponto'] = int(dadosPonto[0][0])
     detalhePontoSeguranca['nome_ponto'] = dadosPonto[0][1]
@@ -688,8 +685,8 @@ def rotaPontoEspecifico(ponto):
     y = dadosPonto[0][2].split(' ')[1][:-1]
     detalhePontoSeguranca["x"] = float(x)
     detalhePontoSeguranca["y"] = float(y)
-    lat = dadosPonto[0][3].split(' ')[0][6:]
-    long = dadosPonto[0][3].split(' ')[1][:-1]
+    lat = dadosPonto[0][3].split(' ')[1][:-1]
+    long = dadosPonto[0][3].split(' ')[0][6:]
     detalhePontoSeguranca["lat"] = float(lat)
     detalhePontoSeguranca["long"] = float(long)
     mensagemPontoEspecifico["ponto_seguranca"] = detalhePontoSeguranca
@@ -699,11 +696,11 @@ def rotaPontoEspecifico(ponto):
     condicao = "WHERE rot_identificador = " + str(dadosRota[0][0])
     dadosRotaEspec, retorno, mensagemRetorno = acessoBanco.leDado('rot_rotaevacuacao', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     if len(dadosRotaEspec) == 0:
-        return {"message": "Esta UHE não possui rota."}, 400, header
+        return {"message": "Esta UHE não possui rota."}, 404, header
 
     detalheRota = {}
     detalheRota['id_rota'] = int(dadosRota[0][0])
@@ -775,7 +772,7 @@ def navega(trecho, trecho_anterior, inicio):
     return caminho
 
 def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
-
+    print ('cheguei aqui')
     cheque = {}
     cheque['message'] = ''
     erro = False
@@ -813,27 +810,41 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
             erro = True
 
     if erro:
-        return cheque, 400
+        return cheque, 404
 
+    print ('to aqui')
+    comando =  "SELECT ST_AsText(ST_Transform(ST_GeomFromText('POINT(" + str(y) + " " + str(x) + ")',4326), 3857)) As wgs_geom "
+    dados, retorno, header = acessoBanco.executaComando(comando)
+    if retorno != 200:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    print
+    print (dados)
+    wgs_geom = dados[0][0]
+    print (wgs_geom)
+
+    #verifica a situação com relação à AOI
+    camposDesejados = 'aoi_identificador, emp_identificador'
+    condicao = "WHERE ST_Intersects(geom, ST_GeomFromText('" + wgs_geom + "', 3857))"
+    dadosPontosAOI, retorno, mensagemRetorno = acessoBanco.leDado('aoi_areainteresse', condicao, camposDesejados)
+
+    if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400
+
+    if len(dadosPontosAOI) == 0:
+        return {"message": "Ponto de Análise não está em área de interesse de nenhum empreendimento."}, 404
+
+    # inclui
     camposDesejados = 'max(pni_identificador)'
     dados, retorno, mensagemRetorno = acessoBanco.leDado('pni_pontointeresse', None, camposDesejados)
 
-    if retorno == 404:
+    if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno,{}
 
     if dados[0][0] is None:
         proximoNumero = 1
     else:
         proximoNumero = dados[0][0]  + 1
-
-    comando =  "SELECT ST_AsText(ST_Transform(ST_GeomFromText('POINT(" + str(x) + " " + str(y) + ")',4326), 3857)) As wgs_geom "
-    dados, retorno, header = acessoBanco.executaComando(comando)
-    if retorno != 200:
-        return {"message": "Erro no acesso ao banco de dados"}, 404
-
-    print (dados)
-    wgs_geom = dados[0][0]
-    print (wgs_geom)
 
     if pni_endereco is None or len(pni_endereco) == 0:
         camposDesejados = 'pni_identificador, pni_descricao, usu_identificador, pni_identificadoratualizacao, pni_dataatualizacao, geom'
@@ -849,7 +860,7 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
 
     dados, retorno, header = acessoBanco.insereDado('pni_pontointeresse', camposDesejados, valores)
     if retorno != 201:
-        return {"message": "Erro no acesso ao banco de dados"}, 404
+        return {"message": "Erro no acesso ao banco de dados"}, 400
 
     mensagemPontos = {}
     mensagemPontos["id"] = proximoNumero
@@ -857,6 +868,7 @@ def trataPontoIncluido(usu_identificador, pni_descricao, pni_endereco, x, y):
     mensagemPontos["endereco"] = pni_endereco
     mensagemPontos["lat"] = float(x)
     mensagemPontos["long"] = float(y)
+    mensagemPontos["empreendimento"] = dadosPontosAOI[0][1]
 
     corpoMensagem ={}
     corpoMensagem['ponto'] = mensagemPontos
