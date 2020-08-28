@@ -59,7 +59,7 @@ def qualificadorAtual(grupo, id):
 
     elif request.method == 'GET':
 
-        checa, mensagem, dados = qualificadorEspecifico(grupo, id)
+        checa, dados, retorno = qualificadorEspecifico(grupo, id)
         if not checa:
             return {'message': 'Não foi possível recuperar dados deste perfil'}, 404, header
         return dados, 200, header
@@ -78,6 +78,7 @@ def listaQualificador(grupo):
         return {"message": "Erro no acesso ao banco de dados"}, retorno
 
     dadosRetorno = []
+    dicRetorno = {}
     for i in range(len(dados)):
         mensagem = {}
         mensagem['id'] = dados[i][0]
@@ -86,8 +87,8 @@ def listaQualificador(grupo):
         mensagem['atualizador'] = dados[i][3]
         mensagem['data'] = dados[i][4].strftime('%Y-%m-%d %H:%M:%S')
         dadosRetorno.append(mensagem)
-
-    return dadosRetorno, 200
+    dicRetorno['qualificadores'] = dadosRetorno
+    return dicRetorno, 200
 
 def qualificadorEspecifico(grupo, id):
     prefixo = 'ql' + grupo[0] + "_"
@@ -96,7 +97,7 @@ def qualificadorEspecifico(grupo, id):
 
     camposDesejados = prefixo+'identificador,' + prefixo + 'titulo, ' + prefixo + 'descricao, usu_nome,' + prefixo + 'dataatualizacao'
     condicao = "INNER JOIN usu_usuario ON usu_identificador = " + tabela + "." + prefixo + "identificadoratualizacao"
-    codicao = condicao + " WHERE " + prefixo + "identificador = " + str(id)
+    condicao = condicao + " WHERE " + prefixo + "identificador = " + str(id)
     dados, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposDesejados)
     if retorno == 400:
         return False, {"message": "Erro no acesso ao banco de dados"}, retorno, []
@@ -104,7 +105,7 @@ def qualificadorEspecifico(grupo, id):
     if dados == []:
         return False, {"message": "Não existe informações para o identificador fornecido"}, retorno, []
 
-    dadosRetorno = []
+
     for i in range(len(dados)):
         mensagem = {}
         mensagem['id'] = dados[i][0]
@@ -112,17 +113,10 @@ def qualificadorEspecifico(grupo, id):
         mensagem['descricao'] = dados[i][2]
         mensagem['atualizador'] = dados[i][3]
         mensagem['data'] = dados[i][4].strftime('%Y-%m-%d %H:%M:%S')
-        dadosRetorno.append(mensagem)
 
-    return True, dadosRetorno, 200
+    return True, mensagem, 200
 
 def trataQualificadorIncluido(grupo, usu_identificador, usu_nome,  titulo, descricao):
-    print(grupo)
-    print(usu_nome)
-    print(usu_identificador)
-    print(titulo)
-    print(descricao)
-    print(titulo is None or type(titulo) is not str or len(titulo) < 1)
     cheque = {}
     cheque['message'] = ''
     erro = False
@@ -168,7 +162,6 @@ def trataQualificadorIncluido(grupo, usu_identificador, usu_nome,  titulo, descr
     camposDesejados = prefixo + 'identificador,' + prefixo + "titulo," + prefixo + "descricao," + prefixo + "identificadoratualizacao," + prefixo + "dataatualizacao"
     valores = str(proximoNumero) + ",'" + titulo + "','" + descricao + "'," + str(usu_identificador) + ",'" + agora + "'"
     dados, retorno, header = acessoBanco.insereDado(tabela, camposDesejados, valores)
-    print (str(retorno))
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
@@ -185,12 +178,6 @@ def trataQualificadorIncluido(grupo, usu_identificador, usu_nome,  titulo, descr
     return mensagem, 201
 
 def trataQualificadorAlterado(grupo, usu_identificador, usu_nome, identificador, titulo, descricao):
-    print(grupo)
-    print(usu_nome)
-    print(usu_identificador)
-    print(titulo)
-    print(descricao)
-    print(titulo is None or type(titulo) is not str or len(titulo) < 1)
     cheque = {}
     cheque['message'] = ''
     erro = False
@@ -244,7 +231,7 @@ def trataQualificadorAlterado(grupo, usu_identificador, usu_nome, identificador,
     dadosIniciais, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposDesejados)
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno
-    print (dadosIniciais)
+
     if dadosIniciais != [] and dadosIniciais[0][0] != identificador:
         cheque['message'] = 'Título e descrição devem ser únicos na base'
         return cheque, 404
@@ -258,27 +245,24 @@ def trataQualificadorAlterado(grupo, usu_identificador, usu_nome, identificador,
     valores = valores + prefixo + "identificadoratualizacao = " + str(usu_identificador) + ", " + prefixo + "dataatualizacao = '" + agora + "'"
     condicao = "WHERE " + prefixo + "identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.alteraDado(tabela, valores, condicao)
-    print (str(retorno))
+
     if retorno != 200:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = identificador
-    if titulo is None:
-        mensagem['titulo'] = dadosIniciais[0][1]
-    else:
+    if titulo is not None:
         mensagem['titulo'] = titulo
-    if descricao is None:
-        mensagem['descricao'] = dadosIniciais[0][2]
-    else:
+    if descricao is not None:
         mensagem['descricao'] = descricao
+
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 200
+
+    return mensagem, 200
 
 def trataQualificadorDeletado(grupo, identificador):
 
@@ -292,7 +276,7 @@ def trataQualificadorDeletado(grupo, identificador):
 
     condicao = "WHERE " + prefixo + "identificador = " + str(identificador)
     dados, retorno, mensagem = acessoBanco.exclueDado(tabela, condicao)
-    print (str(retorno))
+
     if retorno != 200:
         return {"message": mensagem}, retorno
 
@@ -311,6 +295,7 @@ def acessoNovoLista():
 
         entrada = request.json
         descricao = entrada.get('descricao')
+
         resultadoFinal, retorno = trataAcessoIncluido(dadosToken["sub"], dadosToken['name'],descricao)
         return resultadoFinal, retorno, header
     elif request.method == 'GET':
@@ -357,7 +342,7 @@ def listaAcesso():
     dados, retorno, mensagemRetorno = acessoBanco.leDado('pfa_perfilacesso', condicao, camposDesejados)
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno
-
+    dicRetorno = {}
     dadosRetorno = []
     for i in range(len(dados)):
         mensagem = {}
@@ -372,7 +357,9 @@ def listaAcesso():
         condicao = "INNER JOIN trn_transacaosistema ON  trn_transacaosistema.trn_identificador = pfa_trn_perfilacesso_transacaosistema.trn_identificador "
         condicao = condicao + "where pfa_identificador =  " + str(dados[i][0])
         dadosTransacao, retorno, mensagemRetorno = acessoBanco.leDado('pfa_trn_perfilacesso_transacaosistema', condicao, camposDesejados)
-        print(dadosTransacao)
+        if retorno == 400:
+            return {"message": "Erro no acesso ao banco de dados"}, retorno
+
         sigla = []
         nome = []
         for i in range(len(dadosTransacao)):
@@ -381,8 +368,8 @@ def listaAcesso():
         mensagem['transacoes_codigos'] = sigla
         mensagem['transacoes_nomes'] = nome
         dadosRetorno.append(mensagem)
-
-    return dadosRetorno, 200
+    dicRetorno['acessos'] = dadosRetorno
+    return dicRetorno, 200
 
 def acessoEspecifico(id):
 
@@ -407,7 +394,8 @@ def acessoEspecifico(id):
         condicao = "INNER JOIN trn_transacaosistema ON  trn_transacaosistema.trn_identificador = pfa_trn_perfilacesso_transacaosistema.trn_identificador "
         condicao = condicao + "where pfa_identificador =  " + str(dados[i][0])
         dadosTransacao, retorno, mensagemRetorno = acessoBanco.leDado('pfa_trn_perfilacesso_transacaosistema', condicao, camposDesejados)
-        print(dadosTransacao)
+        if retorno == 400:
+            return False, {"message": "Erro no acesso ao banco de dados"}, {}
         sigla = []
         nome = []
         for i in range(len(dadosTransacao)):
@@ -415,14 +403,11 @@ def acessoEspecifico(id):
             nome.append(dadosTransacao[i][1])
         mensagem['transacoes_codigos'] = sigla
         mensagem['transacoes_nomes'] = nome
-        dadosRetorno.append(mensagem)
 
-    return True, {}, dadosRetorno
+
+    return True, {}, mensagem
 
 def trataAcessoIncluido(usu_identificador, usu_nome, descricao):
-    print(usu_identificador)
-    print(usu_nome)
-    print(descricao)
     if descricao is None or type(descricao) is not str or len(descricao) < 1:
         return {"message": "Descrição é obrigatória e textual."}, 404
 
@@ -448,20 +433,19 @@ def trataAcessoIncluido(usu_identificador, usu_nome, descricao):
     camposDesejados = "pfa_identificador, pfa_descricao, pfa_identificadoratualizacao,pfa_dataatualizacao"
     valores = str(proximoNumero) + ",'" + descricao + "'," + str(usu_identificador) + ",'" + agora + "'"
     dados, retorno, header = acessoBanco.insereDado('pfa_perfilacesso', camposDesejados, valores)
-    print (str(retorno))
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = proximoNumero
     mensagem['descricao'] = descricao
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 201
+
+    return mensagem, 201
 
 def trataAcessoAlterado(usu_identificador, usu_nome, identificador, descricao):
 
@@ -497,7 +481,6 @@ def trataAcessoAlterado(usu_identificador, usu_nome, identificador, descricao):
     dadosIniciais, retorno, mensagemRetorno = acessoBanco.leDado('pfa_perfilacesso', condicao, camposDesejados)
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno
-    print (dadosIniciais)
     if dadosIniciais != [] and dadosIniciais[0][0] != identificador:
         cheque['message'] = 'Descrição deve ser única na base'
         return cheque, 404
@@ -506,20 +489,19 @@ def trataAcessoAlterado(usu_identificador, usu_nome, identificador, descricao):
     valores = "pfa_descricao = '" + descricao + "', pfa_identificadoratualizacao = " + str(usu_identificador) + ", pfa_dataatualizacao = '" + agora + "'"
     condicao = "WHERE pfa_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.alteraDado('pfa_perfilacesso', valores, condicao)
-    print (str(retorno))
     if retorno != 200:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = identificador
     mensagem['descricao'] = descricao
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 200
+
+    return mensagem, 200
 
 def trataAcessoDeletado(identificador):
 
@@ -531,7 +513,6 @@ def trataAcessoDeletado(identificador):
     camposDesejados = 'usu_identificador'
     condicao = "WHERE pfa_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('usu_pfa_usuario_perfilacesso', condicao, camposDesejados)
-    print (str(retorno))
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados != []:
@@ -540,7 +521,6 @@ def trataAcessoDeletado(identificador):
     camposDesejados = 'trn_identificador'
     condicao = "WHERE pfa_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('pfa_trn_perfilacesso_transacaosistema', condicao, camposDesejados)
-    print (str(retorno))
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados != []:
@@ -550,7 +530,6 @@ def trataAcessoDeletado(identificador):
 
     condicao = "WHERE pfa_identificador = " + str(identificador)
     dados, retorno, mensagem = acessoBanco.exclueDado('pfa_perfilacesso', condicao)
-    print (str(retorno))
     if retorno != 200:
         return {"message": mensagem}, retorno
 
@@ -624,11 +603,10 @@ def listaPerfil():
     dados, retorno, mensagemRetorno = acessoBanco.leDado('pfu_perfilusuario', condicao, camposDesejados)
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno
-    print(dados)
+
     dadosRetorno = []
-    print (len(dados))
+
     for i in range(len(dados)):
-        print(i)
         mensagem = {}
         mensagem['id'] = dados[i][0]
         mensagem['sigla'] = dados[i][1]
@@ -653,8 +631,9 @@ def listaPerfil():
             mensagem['qualificador_' + grupo + '_titulo'] = dadosQual[0][0]
             mensagem['qualificador_' + grupo + '_descricao'] = dadosQual[0][1]
         dadosRetorno.append(mensagem)
-
-    return dadosRetorno, 200
+    dicRetorno = {}
+    dicRetorno['perfis'] = dadosRetorno
+    return dicRetorno, 200
 
 def perfilEspecifico(id):
     camposDesejados = 'pfu_identificador, pfu_sigla, pfu_descricao, qlu_identificador, qld_identificador, qlt_identificador,'
@@ -666,11 +645,9 @@ def perfilEspecifico(id):
         return False, {"message": "Erro no acesso ao banco de dados"}, {}
     if retorno != 200:
         return False, {"message": "Não foi possivel recuperar os dados para este perfil"}, {}
-    print(dados)
-    dadosRetorno = []
-    print (len(dados))
+
     for i in range(len(dados)):
-        print(i)
+
         mensagem = {}
         mensagem['id'] = dados[i][0]
         mensagem['sigla'] = dados[i][1]
@@ -694,9 +671,9 @@ def perfilEspecifico(id):
                 return {"message": "Erro no acesso ao banco de dados"}, retorno
             mensagem['qualificador_' + grupo + '_titulo'] = dadosQual[0][0]
             mensagem['qualificador_' + grupo + '_descricao'] = dadosQual[0][1]
-        dadosRetorno.append(mensagem)
 
-    return True, {}, dadosRetorno
+
+    return True, {}, mensagem
 
 def trataPerfilIncluido(usu_identificador, usu_nome, sigla, descricao, qual_um, qual_dois, qual_tres, qual_quatro):
     cheque = {}
@@ -805,13 +782,13 @@ def trataPerfilIncluido(usu_identificador, usu_nome, sigla, descricao, qual_um, 
     camposDesejados = "pfu_identificador, pfu_sigla, pfu_descricao, qlu_identificador, qld_identificador, qlt_identificador, qlq_identificador, pfu_identificadoratualizacao, pfu_dataatualizacao"
     valores = str(proximoNumero) + ",'" + sigla + "','" + descricao + "'," + str(qual_um) + "," + str(qual_dois) + "," + str(qual_tres) + "," + str(qual_quatro) +  "," + str(usu_identificador) + ",'" + agora + "'"
     dados, retorno, header = acessoBanco.insereDado('pfu_perfilusuario', camposDesejados, valores)
-    print (str(retorno))
+
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = proximoNumero
     mensagem['sigla'] = sigla
     mensagem['descricao'] = descricao
@@ -821,9 +798,9 @@ def trataPerfilIncluido(usu_identificador, usu_nome, sigla, descricao, qual_um, 
     mensagem['qualificador_quatro_codigo'] = qual_quatro
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 201
+
+    return mensagem, 201
 
 def trataPerfilAlterado(id,usu_identificador, usu_nome, sigla, descricao, qual_um, qual_dois, qual_tres, qual_quatro):
     cheque = {}
@@ -977,13 +954,13 @@ def trataPerfilAlterado(id,usu_identificador, usu_nome, sigla, descricao, qual_u
     valores = valores + "qld_identificador = " + str(qual_dois) + ", qlt_identificador = " + str(qual_tres) + ", qlq_identificador = " + str(qual_quatro) + ","
     valores = valores + "pfu_identificadoratualizacao = " + str(usu_identificador) + ", pfu_dataatualizacao = '" + agora + "'"
     dados, retorno, header = acessoBanco.alteraDado('pfu_perfilusuario', valores, condicao)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = id
     mensagem['sigla'] = sigla
     mensagem['descricao'] = descricao
@@ -993,9 +970,9 @@ def trataPerfilAlterado(id,usu_identificador, usu_nome, sigla, descricao, qual_u
     mensagem['qualificador_quatro_codigo'] = qual_quatro
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 200
+
+    return mensagem, 200
 
 def trataPerfilDeletado(identificador):
 
@@ -1007,7 +984,7 @@ def trataPerfilDeletado(identificador):
     camposDesejados = 'pfu_identificador'
     condicao = "WHERE pfu_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('pfu_perfilusuario', condicao, camposDesejados)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados == []:
@@ -1020,7 +997,7 @@ def trataPerfilDeletado(identificador):
     camposDesejados = 'usu_identificador'
     condicao = "WHERE pfu_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('usu_pfu_usuario_perfilusuario', condicao, camposDesejados)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados != []:
@@ -1029,7 +1006,7 @@ def trataPerfilDeletado(identificador):
     camposDesejados = 'trc_identificador'
     condicao = "WHERE pfu_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('trc_trilhacapacitacao', condicao, camposDesejados)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados != []:
@@ -1039,7 +1016,7 @@ def trataPerfilDeletado(identificador):
 
     condicao = "WHERE pfu_identificador = " + str(identificador)
     dados, retorno, mensagem = acessoBanco.exclueDado('pfu_perfilusuario', condicao)
-    print (str(retorno))
+
     if retorno != 200:
         return {"message": mensagem}, retorno
 
@@ -1103,11 +1080,11 @@ def listaTransacao():
     dados, retorno, mensagemRetorno = acessoBanco.leDado('trn_transacaosistema', condicao, camposDesejados)
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno
-    print(dados)
+
     dadosRetorno = []
-    print (len(dados))
+
     for i in range(len(dados)):
-        print(i)
+
         mensagem = {}
         mensagem['id'] = dados[i][0]
         mensagem['descricao'] = dados[i][1]
@@ -1116,8 +1093,9 @@ def listaTransacao():
         mensagem['data'] = dados[i][4].strftime('%Y-%m-%d %H:%M:%S')
 
         dadosRetorno.append(mensagem)
-
-    return dadosRetorno, 200
+    dicRetorno = {}
+    dicRetorno["transacoes"] = dadosRetorno
+    return dicRetorno, 200
 
 def transacaoEspecifica(id):
     camposDesejados = 'trn_identificador, trn_descricao, trn_codigo, trn_identificadoratualizacao, trn_dataatualizacao,usu_nome'
@@ -1128,11 +1106,8 @@ def transacaoEspecifica(id):
         return False, {"message": "Erro no acesso ao banco de dados"}, {}
     if retorno != 200:
         return False, {"message": "Não foi possivel recuperar os dados para este perfil"}, {}
-    print(dados)
-    dadosRetorno = []
-    print (len(dados))
+
     for i in range(len(dados)):
-        print(i)
         mensagem = {}
         mensagem['id'] = dados[i][0]
         mensagem['descricao'] = dados[i][1]
@@ -1140,8 +1115,8 @@ def transacaoEspecifica(id):
         mensagem['atualizador'] = dados[i][5]
         mensagem['data'] = dados[i][4].strftime('%Y-%m-%d %H:%M:%S')
 
-        dadosRetorno.append(mensagem)
-    return True, {}, dadosRetorno
+
+    return True, {}, mensagem
 
 def trataTransacaoIncluida(usu_identificador, usu_nome, codigo, descricao):
     cheque = {}
@@ -1183,21 +1158,21 @@ def trataTransacaoIncluida(usu_identificador, usu_nome, codigo, descricao):
     camposDesejados = "trn_identificador, trn_codigo, trn_descricao, trn_identificadoratualizacao, trn_dataatualizacao"
     valores = str(proximoNumero) + ",'" + codigo + "','" + descricao + "'," + str(usu_identificador) + ",'" + agora + "'"
     dados, retorno, header = acessoBanco.insereDado('trn_transacaosistema', camposDesejados, valores)
-    print (str(retorno))
+
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = proximoNumero
     mensagem['codigo'] = codigo
     mensagem['descricao'] = descricao
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 201
+
+    return mensagem, 201
 
 def trataTransacaoAlterada(id,usu_identificador, usu_nome, codigo, descricao):
     cheque = {}
@@ -1239,7 +1214,7 @@ def trataTransacaoAlterada(id,usu_identificador, usu_nome, codigo, descricao):
         return {"message": "Não existe transação com o identificador informado"}, 404
 
     if codigo is None:
-        codigo = dadosAtual[0][0]
+        codigo = dadosAtual[0][2]
 
     if descricao is None:
         descricao = dadosAtual[0][1]
@@ -1259,21 +1234,20 @@ def trataTransacaoAlterada(id,usu_identificador, usu_nome, codigo, descricao):
     condicao = "WHERE trn_identificador = " + str(id)
     valores = "trn_codigo = '" + codigo + "', trn_descricao = '" + descricao + "', trn_identificadoratualizacao = " + str(usu_identificador) + ", trn_dataatualizacao = '" + agora + "'"
     dados, retorno, header = acessoBanco.alteraDado('trn_transacaosistema', valores, condicao)
-    print (str(retorno))
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = id
     mensagem['codigo'] = codigo
     mensagem['descricao'] = descricao
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 200
+
+    return mensagem, 200
 
 def trataTransacaoDeletada(identificador):
 
@@ -1285,7 +1259,6 @@ def trataTransacaoDeletada(identificador):
     camposDesejados = 'trn_identificador'
     condicao = "WHERE trn_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('trn_transacaosistema', condicao, camposDesejados)
-    print (str(retorno))
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados == []:
@@ -1297,7 +1270,6 @@ def trataTransacaoDeletada(identificador):
     camposDesejados = 'pfa_identificador'
     condicao = "WHERE trn_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('pfa_trn_perfilacesso_transacaosistema', condicao, camposDesejados)
-    print (str(retorno))
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados != []:
@@ -1307,7 +1279,6 @@ def trataTransacaoDeletada(identificador):
 
     condicao = "WHERE trn_identificador = " + str(identificador)
     dados, retorno, mensagem = acessoBanco.exclueDado('trn_transacaosistema', condicao)
-    print (str(retorno))
     if retorno != 200:
         return {"message": mensagem}, retorno
 
@@ -1377,20 +1348,18 @@ def trataAcessoQualificaIncluido(id, usu_identificador, usu_nome, transacao):
     camposDesejados = "pfa_identificador, trn_identificador, pfa_trn_identificadoratualizacao, pfa_trn_dataatualizacao"
     valores = str(id) + "," + str(transacao) + "," + str(usu_identificador) + ",'" + agora + "'"
     dados, retorno, header = acessoBanco.insereDado('pfa_trn_perfilacesso_transacaosistema', camposDesejados, valores)
-    print (str(retorno))
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['perfil'] = id
     mensagem['transacao'] = transacao
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 201
+    return mensagem, 201
 
 def trataAcessoQualificaDeletado(id, transacao):
     cheque = {}
@@ -1412,7 +1381,6 @@ def trataAcessoQualificaDeletado(id, transacao):
 
     condicao = "WHERE pfa_identificador = " + str(id) + " and  trn_identificador = " + str(transacao)
     dados, retorno, header = acessoBanco.exclueDado('pfa_trn_perfilacesso_transacaosistema', condicao)
-    print (str(retorno))
     if retorno != 200:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 

@@ -115,12 +115,12 @@ def dadoConvencionalAtualizado():
     atual_data = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
 
     try:
-        print("entrei no try")
+
         if not request.json:
             resposta = acessoBanco.montaRetorno(400, 'Arquivo JSON não fornecido')
             return resposta, 400, header
         dados = request.json
-        print(dados)
+
         mtt_tabela = dados['tabela']
         if mtt_tabela not in ('mtt_metadadotabela','mtt_metadadoatributo'):
             resposta = acessoBanco.montaRetorno(400, 'Funcionalidade não permitida para esta tabela.')
@@ -148,9 +148,7 @@ def dadoConvencionalAtualizado():
         comando = comando[1:]
         comando = comando + "," + prefixo +"identificadoratualizacao = " + str(atual_usuario) + "," + prefixo + "dataatualizacao = '" + atual_data + "'"
         condicao = "WHERE " + identificador + " = " + str(dados[identificador])
-        print (comando)
-        print(condicao)
-        print(mtt_tabela)
+
         dadosAlterado, retorno, mensagemRetorno = acessoBanco.alteraDado(mtt_tabela, comando, condicao)
         if retorno != 200:
             resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)

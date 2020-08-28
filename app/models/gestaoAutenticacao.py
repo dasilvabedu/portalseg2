@@ -26,7 +26,7 @@ def geraToken(dados):
         roleString = roleString[0:-1] + ']'
 
     dadosTrans = dados['allowed_transactions']
-    print(dadosTrans)
+
     if len(dadosTrans) == 0:
         transString = '[]'
     else:
@@ -128,8 +128,6 @@ def invalidaToken(token, dadosToken, header):
     agora = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     campos = 'tki_identificador, usu_identificador, tki_token, tki_dataexpiracao, tki_identificadoratualizacao, tki_dataatualizacao'
     valores = str(proximoNumero) + "," + dadosToken['sub'] + ",'" + token +"','" + dadosToken['iat'] + "'," + str(dadosToken['sub']) + ",'" + agora + "'"
-    print (campos)
-    print(valores)
 
     dados, retorno, mensagemRetorno = acessoBanco.insereDado('tki_tokeninvalidado', campos, valores)
     if retorno != 201:

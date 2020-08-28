@@ -73,7 +73,7 @@ def dado(tabela, condicao=None, camposDesejados=None, limite = None):
         if limite is not None:
             comando = comando + ' LIMIT ' + str(limite)
         resultado = []
-        print(comando)
+
         cur.execute(comando)
         recset = cur.fetchall()
         for rec in recset:
@@ -112,7 +112,7 @@ def alteraDado(tabela, valores, condicao=None):
         if condicao is not None:
             comando = comando + " " + condicao
         resultado = []
-        print(comando)
+
         cur.execute(comando)
         conn.commit()
 
@@ -186,7 +186,7 @@ def leDado(tabela, condicao=None, camposDesejados=None):
             comando = comando + ' ' + condicao
 
         resultado = []
-        print (comando)
+
         cur.execute(comando)
         recset = cur.fetchall()
         for rec in recset:
@@ -219,7 +219,7 @@ def insereDado(tabela, camposDesejados=None, valores=None):
 
     # execucao de comando
         comando = "INSERT INTO " + tabela + " (" + camposDesejados + ") values (" + valores + ")"
-        print(comando)
+
         resultado = []
         cur.execute(comando)
         conn.commit()
@@ -285,7 +285,7 @@ def exclueDado(tabela, condicao):
         if condicao is not None:
             comando = comando + ' ' + condicao
         resultado = []
-        print (comando)
+
         cur.execute(comando)
         recset = cur.fetchall()
         for rec in recset:
@@ -298,7 +298,7 @@ def exclueDado(tabela, condicao):
         if condicao is not None:
             comando = comando + ' ' + condicao
         resultado = []
-        print (comando)
+
         cur.execute(comando)
         conn.commit()
 
@@ -315,8 +315,7 @@ def exclueDado(tabela, condicao):
 def exclueDadoMultiplo(tabela, condicao):
 
     conn = None
-    print (tabela)
-    print (condicao)
+
     try:
     # conecta ao servidor PostgreSQL
         conn = psycopg2.connect(database_url)
@@ -350,7 +349,7 @@ def exclueDadoMultiplo(tabela, condicao):
 def executaDadoMultiplo(comando):
     """ Deleta registro de uma tabela  no Postgress """
     conn = None
-    print (comando)
+
 
     try:
     # conecta ao servidor PostgreSQL - Google cloud
@@ -367,7 +366,7 @@ def executaDadoMultiplo(comando):
     # execucao de comando
         resultado = []
         for i in range(len(comando)):
-            print (comando[i])
+
             cur.execute(comando[i])
         conn.commit()
 
@@ -386,7 +385,7 @@ def executaDadoMultiplo(comando):
 def executaComando(comando):
 
     conn = None
-    print (comando)
+
 
     try:
     # conecta ao servidor PostgreSQL - Google cloud
@@ -600,12 +599,11 @@ def insereMetadadoAtributo(lista, atual_data, atual_usuario):
 
         # criacao de cursor
         cur = conn.cursor()
-        print ("lista --- ", lista)
+
         for k in lista:
             tabela = k.split("###")[0]
             atributo = k.split("###")[1]
-            print ("tabela -- ", tabela)
-            print ("atributo -- ", atributo)
+
             # recupera os dados da tabela
             colunas = "SELECT column_name, ordinal_position, data_type FROM information_schema.columns WHERE table_name = '" + tabela + "' AND column_name = '" + atributo + "'"
             cur.execute(colunas)
@@ -634,14 +632,14 @@ def insereMetadadoAtributo(lista, atual_data, atual_usuario):
             cur.execute(comandoAtributo)
             atualNumeroAtributo = cur.fetchone()[0]
             # insere os registro em mta_metadadoatributo
-            print(dadosAtributo)
+
             for dados in dadosAtributo:
                 atualNumeroAtributo = atualNumeroAtributo + 1
                 campos = " (mtt_identificador, mta_identificador, mta_atributo, mta_sequencia, mta_tipo, mta_editavel, mta_identificadoratualizacao, mta_dataatualizacao)"
                 valores = " values (" + str(mtt_identificador) + "," + str(atualNumeroAtributo) + ",'" + dados[0] + "'," + str(dados[1]) + ",'" + dados[2] + "','não'," + \
                           str(atual_usuario) + ",'" + atual_data + "')"
                 comando = "INSERT INTO mta_metadadoatributo" + campos + valores
-                print(comando)
+
                 cur.execute(comando)
         conn.commit()
 
@@ -767,7 +765,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
 
         tabela = 'usu_usuario'
         comando = "INSERT INTO " + tabela + " (" + campos + ") values (" + valores + ")"
-        print (comando)
+
         cur.execute(comando)
 
         # inclui perfil
@@ -776,7 +774,7 @@ def insereUsuario(usu_celular, usu_email, usu_senha, usu_nome):
 
         tabela = 'usu_pfa_usuario_perfilacesso'
         comando = "INSERT INTO " + tabela + " (" + campos + ") values (" + valores + ")"
-        print (comando)
+
         cur.execute(comando)
 
         dicionarioRetorno = {}

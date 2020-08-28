@@ -84,7 +84,7 @@ def trataLogin(usu_login, usu_senha):
             for i in range(len(dadosTransacao)):
                 transacoes = transacoes + str(dadosTransacao[i][0]) + ','
             transacoes = transacoes[0:-1] + ')'
-            print(transacoes)
+
         #recupera o código das transações associadas
             camposdesejados = 'trn_codigo'
             tabela = 'trn_transacaosistema'
@@ -310,7 +310,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
             return cheque, 404, {}
 
     dados, retorno, header = acessoBanco.insereUsuario(usu_celular, usu_email, usu_senha, usu_nome)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400, {}
 
@@ -690,7 +690,7 @@ def usuarioEspecifico(id):
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_pfa_usuario_perfilacesso', condicao, camposDesejados)
     if retorno == 400:
         return False, {'message':'Erro de acesso ao banco'}, []
-    print(dados)
+
     sigla = []
     nome = []
     for i in range(len(dados)):
@@ -706,7 +706,7 @@ def usuarioEspecifico(id):
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_emp_usuario_empreendimento', condicao, camposDesejados)
     if retorno == 400:
         return False, {'message':'Erro de acesso ao banco'}, []
-    print(dados)
+
     sigla = []
     nome = []
     codigo = []
@@ -725,7 +725,7 @@ def usuarioEspecifico(id):
     dados, retorno, mensagemRetorno = acessoBanco.leDado('usu_pfu_usuario_perfilusuario', condicao, camposDesejados)
     if retorno == 400:
         return False, {'message':'Erro de acesso ao banco'}, []
-    print(dados)
+
     sigla = []
     nome = []
     for i in range(len(dados)):
@@ -777,19 +777,19 @@ def usuarioRecuperaSenha():
     body_mensagem["params"] = dic_codigo
     body_mensagem["flow"] = config.FLOW_MENSAGEM
     body = json.dumps(body_mensagem)
-    print(body)
+
     header = {}
     header["Authorization"] = config.HEADER_MENSAGEM
     header["Content-Type"] = "application/json"
-    print(header)
+
     res = requests.post(config.CAMINHO_MENSAGEM, data=body, headers = header)
-    print (res.status_code)
+
     if res.status_code != 201:
         return {"message": "Não foi possível enviar o código"}, 404, {}
 
 
     dadosNovo, retorno, header = novoToken(dados[0][0], dados[0][1], dados[0][2],  dados[0][3])
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400, {}
 
@@ -805,6 +805,7 @@ def usuarioRecuperaSenha():
     mensagem['phone_number'] = dados[0][1]
     mensagem['email'] = dados[0][2]
     mensagem['name'] = dados[0][3]
+    mensagem['token'] = 'Bearer ' + token
 
     return mensagem, 200, headerRetorno
 
@@ -859,7 +860,7 @@ def novoToken(usu_identificador, usu_celular, usu_email,  usu_nome):
             for i in range(len(dadosTransacao)):
                 transacoes = transacoes + str(dadosTransacao[i][0]) + ','
             transacoes = transacoes[0:-1] + ')'
-            print(transacoes)
+
         #recupera o código das transações associadas
             camposdesejados = 'trn_codigo'
             tabela = 'trn_transacaosistema'

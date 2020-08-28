@@ -210,7 +210,7 @@ def metadadoValidado():
     resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
     if retorno != 200:
         return resultadoFinal, retorno, header
-    print (tabelas)
+
     relacaoTabelas = "('"
     listaTabelas = []
     for k in range(len(tabelas)):
@@ -262,7 +262,7 @@ def metadadoValidado():
     atributosIncluir = []
 
     for k in range(len(metadados)):
-        print("Tabela -- ", metadados[k])
+
         listaInformation = []
         listaAtributos = []
         condicao = "WHERE table_name = '" + metadados[k]['mtt_tabela'] + "'"
@@ -272,13 +272,13 @@ def metadadoValidado():
             return resultadoFinal, retorno, header
         for j in range(len(information)):
             listaInformation.append(metadados[k]['mtt_tabela']+'###'+information[j]['column_name'])
-        print(listaInformation)
+
         condicao = "WHERE mtt_identificador = " + str(metadados[k]['mtt_identificador'])
         atributos, retorno, mensagemRetorno = acessoBanco.dado('mta_metadadoatributo', condicao, camposMetadados, None)
         resultadoFinal = acessoBanco.montaRetorno(retorno, mensagemRetorno)
         if retorno != 200:
             return resultadoFinal, retorno, header
-        print(atributos)
+
         for j in range(len(atributos)):
             pesquisa = metadados[k]['mtt_tabela']+'###'+atributos[j]['mta_atributo']
             listaAtributos.append(pesquisa)
@@ -287,11 +287,11 @@ def metadadoValidado():
                 atributosApagar.append(pesquisa)
 
         for k in listaInformation:
-            print(k)
+
     # verifica atributos que devem ser incluidos
             if k not in listaAtributos:
                 atributosIncluir.append(k)
-    print("atributos a incluir --- ", atributosIncluir)
+
     if atributosIncluir != []:
         atributos, retorno, mensagemRetorno = acessoBanco.insereMetadadoAtributo(atributosIncluir, atual_data, atual_usuario)
         if retorno != 201:

@@ -10,7 +10,7 @@ def documentacaoGeral():
     condicao = "WHERE doc_grupo = 'geral'"
     dados, retorno, mensagemRetorno = acessoBanco.leDado('doc_documentacaoassociada', condicao, camposDesejados)
 
-    if retorno == 404:
+    if retorno == 400:
         return {"message": "Erro de acesso ao banco"}, retorno, {}
     if dados == []:
         return {}, 200, {}
@@ -47,8 +47,8 @@ def documentacaoAgrupado(grupo=None):
         condicao = "WHERE a.doc_grupo = '" + grupo + "' and a.doc_identificador = b.doc_identificador and b.emp_identificador = " + str(uhe)
         dados, retorno, mensagemRetorno = acessoBanco.leDado('doc_documentacaoassociada as a, doc_emp_documentacaoassociada_empreendimento as b', condicao, camposDesejados)
 
-    if retorno == 404:
-        return {"message": "Erro de acesso ao banco"}, 401, header
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
 
     retorna=[]
     for i in range(len(dados)):
@@ -65,3 +65,27 @@ def documentacaoAgrupado(grupo=None):
     listaMensagem['documentos'] = retorna
     return listaMensagem, 200, header
 
+def documentacaoLista():
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 400, header
+    camposDesejados = 'doc_grupo,doc_nome,doc_descricao,doc_arquivo'
+    dados, retorno, mensagemRetorno = acessoBanco.leDado('doc_documentacaoassociada', None, camposDesejados)
+
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, retorno, {}
+    if dados == []:
+        return [], 200, {}
+
+    retorna=[]
+    for i in range(len(dados)):
+        lista = {}
+        lista['grupo'] = dados[i][0]
+        lista['nome'] = dados[i][1]
+        lista['descricao'] = dados[i][2]
+        lista['arquivo'] = dados[i][3]
+        retorna.append(lista)
+
+    listaMensagem = {}
+    listaMensagem['documentos'] = retorna
+    return listaMensagem, retorno, {}

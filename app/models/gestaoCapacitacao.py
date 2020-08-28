@@ -64,21 +64,21 @@ def listaModulo():
     dados, retorno, mensagemRetorno = acessoBanco.leDado('moc_modulocapacitacao', condicao, camposDesejados)
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno
-    print(dados)
+
     dadosRetorno = []
-    print (len(dados))
+    dicRetorno = {}
+
     for i in range(len(dados)):
-        print(i)
+
         mensagem = {}
         mensagem['id'] = dados[i][0]
         mensagem['sigla'] = dados[i][1]
         mensagem['nome'] = dados[i][2]
         mensagem['atualizador'] = dados[i][5]
         mensagem['data'] = dados[i][4].strftime('%Y-%m-%d %H:%M:%S')
-
         dadosRetorno.append(mensagem)
-
-    return dadosRetorno, 200
+    dicRetorno['modulos'] = dadosRetorno
+    return dicRetorno, 200
 
 def moduloEspecifico(id):
     camposDesejados = 'moc_identificador, moc_sigla, moc_nome, moc_identificadoratualizacao, moc_dataatualizacao,usu_nome'
@@ -89,11 +89,9 @@ def moduloEspecifico(id):
         return False, {"message": "Erro no acesso ao banco de dados"}, {}
     if retorno != 200:
         return False, {"message": "Não foi possivel recuperar os dados para este módulo"}, {}
-    print(dadosModulo)
-    dadosRetorno = []
-    print (len(dadosModulo))
+
     for i in range(len(dadosModulo)):
-        print(i)
+
         mensagem = {}
         mensagem['id'] = dadosModulo[i][0]
         mensagem['sigla'] = dadosModulo[i][1]
@@ -101,7 +99,7 @@ def moduloEspecifico(id):
         mensagem['atualizador'] = dadosModulo[i][5]
         mensagem['data'] = dadosModulo[i][4].strftime('%Y-%m-%d %H:%M:%S')
 
-        dadosRetorno.append(mensagem)
+
 
         # recupera os perfis de onde participa
         camposDesejados = 'trc_moc_sequencia, trc_sigla, trc_nome'
@@ -110,7 +108,7 @@ def moduloEspecifico(id):
         dadosTrilha, retorno, mensagemRetorno = acessoBanco.leDado('trc_moc_trilhacapacitacao_modulocapacitacao', condicao, camposDesejados)
         if retorno == 400:
             return False, {"message": "Erro no acesso ao banco de dados"}, {}
-        print(dadosTrilha)
+
         listTrilha = []
         for j in range(len(dadosTrilha)):
             mensagemTrilha = {}
@@ -119,7 +117,7 @@ def moduloEspecifico(id):
             mensagemTrilha['nome'] = dadosTrilha[j][2]
             listTrilha.append(mensagemTrilha)
         mensagem['trilhas']  = listTrilha
-    return True, {}, dadosRetorno
+    return True, {}, mensagem
 
 def trataModuloIncluido(usu_identificador, usu_nome, sigla, nome):
     cheque = {}
@@ -161,21 +159,21 @@ def trataModuloIncluido(usu_identificador, usu_nome, sigla, nome):
     camposDesejados = "moc_identificador, moc_sigla, moc_nome, moc_identificadoratualizacao, moc_dataatualizacao"
     valores = str(proximoNumero) + ",'" + sigla + "','" + nome + "'," + str(usu_identificador) + ",'" + agora + "'"
     dados, retorno, header = acessoBanco.insereDado('moc_modulocapacitacao', camposDesejados, valores)
-    print (str(retorno))
+
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = proximoNumero
     mensagem['sigla'] = sigla
     mensagem['nome'] = nome
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 201
+
+    return mensagem, 201
 
 def trataModuloAlterado(id,usu_identificador, usu_nome, sigla, nome):
     cheque = {}
@@ -217,10 +215,10 @@ def trataModuloAlterado(id,usu_identificador, usu_nome, sigla, nome):
         return {"message": "Não existe Módulo com o identificador informado"}, 404
 
     if sigla is None:
-        sigla = dadosAtual[0][0]
+        sigla = dadosAtual[0][1]
 
     if nome is None:
-        nome = dadosAtual[0][1]
+        nome = dadosAtual[0][2]
 
     # verifica se  os parãmetros informados são únicos
     camposDesejados = 'moc_identificador'
@@ -237,21 +235,20 @@ def trataModuloAlterado(id,usu_identificador, usu_nome, sigla, nome):
     condicao = "WHERE moc_identificador = " + str(id)
     valores = "moc_sigla = '" + sigla + "', moc_nome = '" + nome + "', moc_identificadoratualizacao = " + str(usu_identificador) + ", moc_dataatualizacao = '" + agora + "'"
     dados, retorno, header = acessoBanco.alteraDado('moc_modulocapacitacao', valores, condicao)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = id
     mensagem['sigla'] = sigla
     mensagem['nome'] = nome
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 200
+    return mensagem, 200
 
 def trataModuloDeletado(identificador):
 
@@ -263,7 +260,7 @@ def trataModuloDeletado(identificador):
     camposDesejados = 'moc_identificador'
     condicao = "WHERE moc_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('moc_modulocapacitacao', condicao, camposDesejados)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados == []:
@@ -275,7 +272,7 @@ def trataModuloDeletado(identificador):
     camposDesejados = 'trc_identificador'
     condicao = "WHERE moc_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('trc_moc_trilhacapacitacao_modulocapacitacao', condicao, camposDesejados)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados != []:
@@ -285,7 +282,7 @@ def trataModuloDeletado(identificador):
 
     condicao = "WHERE moc_identificador = " + str(identificador)
     dados, retorno, mensagem = acessoBanco.exclueDado('moc_modulocapacitacao', condicao)
-    print (str(retorno))
+
     if retorno != 200:
         return {"message": mensagem}, retorno
 
@@ -352,11 +349,11 @@ def listaTrilha():
     dados, retorno, mensagemRetorno = acessoBanco.leDado('trc_trilhacapacitacao', condicao, camposDesejados)
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, retorno
-    print(dados)
+
     dadosRetorno = []
-    print (len(dados))
+
     for i in range(len(dados)):
-        print(i)
+
         mensagem = {}
         mensagem['id'] = dados[i][0]
         mensagem['sigla'] = dados[i][1]
@@ -366,8 +363,9 @@ def listaTrilha():
         mensagem['data'] = dados[i][4].strftime('%Y-%m-%d %H:%M:%S')
 
         dadosRetorno.append(mensagem)
-
-    return dadosRetorno, 200
+    dicRetorno = {}
+    dicRetorno['trilhas'] = dadosRetorno
+    return dicRetorno, 200
 
 def trilhaEspecifica(id):
     camposDesejados = 'trc_identificador, trc_sigla, trc_nome, pfu_sigla, trc_dataatualizacao,usu_nome'
@@ -379,15 +377,16 @@ def trilhaEspecifica(id):
         return False, {"message": "Erro no acesso ao banco de dados"}, {}
     if retorno != 200:
         return False, {"message": "Não foi possivel recuperar os dados para esta trilha"}, {}
-    print(dadosTrilha)
+
     dadosRetorno = []
-    print (len(dadosTrilha))
+
     for i in range(len(dadosTrilha)):
-        print(i)
+
         mensagem = {}
         mensagem['id'] = dadosTrilha[i][0]
         mensagem['sigla'] = dadosTrilha[i][1]
         mensagem['nome'] = dadosTrilha[i][2]
+        mensagem['perfil_associado'] = dadosTrilha[i][3]
         mensagem['atualizador'] = dadosTrilha[i][5]
         mensagem['data'] = dadosTrilha[i][4].strftime('%Y-%m-%d %H:%M:%S')
 
@@ -400,7 +399,7 @@ def trilhaEspecifica(id):
         dadosTrilha, retorno, mensagemRetorno = acessoBanco.leDado('trc_moc_trilhacapacitacao_modulocapacitacao', condicao, camposDesejados)
         if retorno == 400:
             return False, {"message": "Erro no acesso ao banco de dados"}, {}
-        print(dadosTrilha)
+
         listTrilha = []
         for j in range(len(dadosTrilha)):
             mensagemTrilha = {}
@@ -409,7 +408,7 @@ def trilhaEspecifica(id):
             mensagemTrilha['nome'] = dadosTrilha[j][2]
             listTrilha.append(mensagemTrilha)
         mensagem['modulos']  = listTrilha
-    return True, {}, dadosRetorno
+    return True, {}, mensagem
 
 def trataTrilhaIncluida(usu_identificador, usu_nome, sigla, nome, perfil):
     cheque = {}
@@ -469,22 +468,21 @@ def trataTrilhaIncluida(usu_identificador, usu_nome, sigla, nome, perfil):
     camposDesejados = "trc_identificador, trc_sigla, trc_nome, trc_identificadoratualizacao, trc_dataatualizacao, pfu_identificador"
     valores = str(proximoNumero) + ",'" + sigla + "','" + nome + "'," + str(usu_identificador) + ",'" + agora + "'," + str(perfil)
     dados, retorno, header = acessoBanco.insereDado('trc_trilhacapacitacao', camposDesejados, valores)
-    print (str(retorno))
+
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = proximoNumero
     mensagem['sigla'] = sigla
     mensagem['nome'] = nome
-    mensagem['perfil'] = perfil
+    mensagem['perfil_associado'] = perfil
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 201
+    return mensagem, 201
 
 def trataTrilhaAlterada(id,usu_identificador, usu_nome, sigla, nome, perfil):
     cheque = {}
@@ -560,22 +558,22 @@ def trataTrilhaAlterada(id,usu_identificador, usu_nome, sigla, nome, perfil):
     valores = "trc_sigla = '" + sigla + "', trc_nome = '" + nome + "', trc_identificadoratualizacao = " + str(usu_identificador) + ", trc_dataatualizacao = '" + agora + "'"
     valores = valores + ", pfu_identificador = " + str(perfil)
     dados, retorno, header = acessoBanco.alteraDado('trc_trilhacapacitacao', valores, condicao)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['id'] = id
     mensagem['sigla'] = sigla
     mensagem['nome'] = nome
-    mensagem['perfil'] = perfil
+    mensagem['perfil_associado'] = perfil
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 200
+
+    return mensagem, 200
 
 def trataTrilhaDeletada(identificador):
 
@@ -587,7 +585,7 @@ def trataTrilhaDeletada(identificador):
     camposDesejados = 'trc_identificador'
     condicao = "WHERE trc_identificador = " + str(identificador)
     dados, retorno, header = acessoBanco.leDado('trc_trilhacapacitacao', condicao, camposDesejados)
-    print (str(retorno))
+
     if retorno == 400:
         return {"message": "Erro no acesso ao banco de dados"}, 400
     if dados == []:
@@ -597,7 +595,7 @@ def trataTrilhaDeletada(identificador):
 
     condicao = "WHERE trc_identificador = " + str(identificador)
     dados, retorno, mensagem = acessoBanco.exclueDado('trc_trilhacapacitacao', condicao)
-    print (str(retorno))
+
     if retorno != 200:
         return {"message": mensagem}, retorno
 
@@ -691,21 +689,20 @@ def trataTrilhaQualificaIncluida(id, usu_identificador, usu_nome, modulo, seq):
     camposDesejados = "trc_identificador, moc_identificador, trc_moc_sequencia, trc_moc_identificadoratualizacao, trc_moc_dataatualizacao"
     valores = str(id) + "," + str(modulo) + "," + str(seq) + "," + str(usu_identificador) + ",'" + agora + "'"
     dados, retorno, header = acessoBanco.insereDado('trc_moc_trilhacapacitacao_modulocapacitacao', camposDesejados, valores)
-    print (str(retorno))
+
     if retorno != 201:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 
     # gera o retorno
     mensagem = {}
-    dadosRetorno = []
+
     mensagem['trilha'] = id
     mensagem['modulo'] = modulo
     mensagem['sequencia'] = seq
     mensagem['atualizador'] = usu_nome
     mensagem['data'] = agora
-    dadosRetorno.append(mensagem)
 
-    return dadosRetorno, 201
+    return mensagem, 201
 
 def trataTrilhaQualificaDeletada(id, modulo):
     cheque = {}
@@ -727,7 +724,7 @@ def trataTrilhaQualificaDeletada(id, modulo):
 
     condicao = "WHERE trc_identificador = " + str(id) + " and  moc_identificador = " + str(modulo)
     dados, retorno, header = acessoBanco.exclueDado('trc_moc_trilhacapacitacao_modulocapacitacao', condicao)
-    print (str(retorno))
+
     if retorno != 200:
         return {"message": "Erro no acesso ao banco de dados"}, 400
 

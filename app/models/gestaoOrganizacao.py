@@ -259,8 +259,6 @@ def organizacaoIncluido():
     tipo = query_parameters.get('tipo')
     sigla = query_parameters.get('sigla')
 
-    print(nivel, " - ",nome, " - ",superior, " - ",pae, " - ",tipo)
-
     if nivel is None or nome is None:
         listaMensagem = {}
         listaMensagem['acesso'] = 'nok'
@@ -393,7 +391,7 @@ def organizacaoIncluido():
         return resposta, 201, header
 
     elif nivel == "empreendimento":
-        print(nivel, " - ", nome, " - ", superior, " - ", pae, " - ", tipo)
+
         if superior is None or tipo is None or pae is None or sigla is None:
             listaMensagem = {}
             listaMensagem['acesso'] = 'nok'
@@ -696,7 +694,7 @@ def organizacaoAlterado():
         return resposta, 200, header
 
     elif nivel == "empreendimento":
-        print ('empreendimento')
+
         comando_companhia = ''
         if superior is not None:
             #verifica se existe companhia com o nome indicado
@@ -806,7 +804,6 @@ def organizacaoAlterado():
         altera = False
 
         comando = comando_tipo + comando_companhia + comando_novonome + comando_novasigla
-        print ('comando ******',comando)
 
         if len(comando) > 4:
             comando = comando[1:] + ", emp_identificadoratualizacao = " + str(atual_usuario) + ", emp_dataatualizacao = '" + atual_data + "'"
@@ -820,7 +817,7 @@ def organizacaoAlterado():
             condicao = "WHERE emp_identificador = " + str(emp_identificador)
             camposDesejados = 'pae_identificador'
             dados, retorno, mensagemRetorno = acessoBanco.dado('pae_planoacaoemergencia', condicao, camposDesejados, None)
-            print(dados)
+
             if retorno != 200:
                 resultado = []
                 return resultado, retorno, header
@@ -855,8 +852,6 @@ def organizacaoAlterado():
                     comandoNecessario.append(linha)
                     altera = True
 
-        print ('altera *** ', altera)
-        print (comandoNecessario)
         if altera:
             dados, retorno, mensagemRetorno = acessoBanco.executaDadoMultiplo(comandoNecessario)
             if retorno != 200:
