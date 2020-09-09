@@ -3,17 +3,24 @@
 from ..views import acessoBanco
 from ..models import gestaoAutenticacao
 
+
 def moradoresMacro(uhe):
-    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        return mensagem, 400, ""
 
     # verifica se existem agentes para a UHE
-    camposDesejados = 'pro_propriedade.pro_identificador, pro_endereco, pro_tipo, pro_uso, pro_proprietario, pro_telefonefixo, pro_telefonecelular, pro_email, pro_frequenciauso, '
-    camposDesejados = camposDesejados + 'pro_formaacesso, pro_condicaoacesso, pro_estadoconservacao, pro_quantidadeedificacao'
-    condicao = "INNER JOIN pae_planoacaoemergencia ON pae_planoacaoemergencia.pae_identificador = pro_propriedade.pae_identificador "
-    condicao = condicao + "WHERE pae_planoacaoemergencia.emp_identificador = " + str(uhe)
-    dadosMorador, retorno, mensagemRetorno = acessoBanco.leDado('pro_propriedade', condicao, camposDesejados)
+    camposDesejados = (
+        "pro_propriedade.pro_identificador, pro_endereco, pro_tipo, pro_uso, pro_proprietario, pro_telefonefixo, "
+        + "pro_telefonecelular, pro_email, pro_frequenciauso, "
+        + "pro_formaacesso, pro_condicaoacesso, pro_estadoconservacao, pro_quantidadeedificacao"
+    )
+    condicao = (
+        "INNER JOIN pae_planoacaoemergencia ON "
+        + "pae_planoacaoemergencia.pae_identificador = pro_propriedade.pae_identificador "
+        + "WHERE pae_planoacaoemergencia.emp_identificador = " + str(uhe)
+    )
+    dadosMorador, retorno, mensagemRetorno = acessoBanco.leDado("pro_propriedade", condicao, camposDesejados)
 
     if retorno == 404:
         return {"message": "Erro de acesso ao banco"}, 401, header
@@ -21,7 +28,7 @@ def moradoresMacro(uhe):
     if len(dadosMorador) == 0:
         return {"message": "Esta UHE não possui moradores cadastrados."}, 400, header
 
- # monta resposta
+    # monta resposta
     dadosFinais = []
     for i in range(len(dadosMorador)):
         mensagemMoradores = {}
@@ -41,26 +48,30 @@ def moradoresMacro(uhe):
         dadosFinais.append(mensagemMoradores)
 
     corpoMensagem = {}
-    corpoMensagem['moradores'] = dadosFinais
+    corpoMensagem["moradores"] = dadosFinais
     return corpoMensagem, 200, header
 
+
 def moradorEspecifico(id_morador):
-    checa, mensagem,  header = gestaoAutenticacao.trataValidaToken()
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
-        return mensagem, 400, ''
+        return mensagem, 400, ""
 
     # recupera o dado do morador
-    camposDesejados = 'pro_identificador, pro_endereco, pro_tipo, pro_uso, pro_proprietario, pro_telefonefixo, pro_telefonecelular, pro_email, pro_frequenciauso, '
-    camposDesejados = camposDesejados + 'pro_formaacesso, pro_condicaoacesso, pro_estadoconservacao, pro_quantidadeedificacao'
+    camposDesejados = (
+        "pro_identificador, pro_endereco, pro_tipo, pro_uso, pro_proprietario, pro_telefonefixo, "
+        + "pro_telefonecelular, pro_email, pro_frequenciauso, "
+        + "pro_formaacesso, pro_condicaoacesso, pro_estadoconservacao, pro_quantidadeedificacao"
+    )
     condicao = "WHERE pro_identificador = " + str(id_morador)
-    dadosMorador, retorno, mensagemRetorno = acessoBanco.leDado('pro_propriedade', condicao, camposDesejados)
+    dadosMorador, retorno, mensagemRetorno = acessoBanco.leDado("pro_propriedade", condicao, camposDesejados)
     if retorno == 404:
         return {"message": "Erro de acesso ao banco"}, 401, header
 
     if len(dadosMorador) == 0:
         return {"message": "Esta UHE não possui agentes relacionados."}, 400, header
 
- # monta resposta
+    # monta resposta
     mensagemMoradores = {}
     mensagemMoradores["id"] = dadosMorador[0][0]
     mensagemMoradores["endereco"] = dadosMorador[0][1]
@@ -76,5 +87,5 @@ def moradorEspecifico(id_morador):
     mensagemMoradores["qtde_edif"] = dadosMorador[0][11]
 
     corpoMensagem = {}
-    corpoMensagem['morador'] = mensagemMoradores
+    corpoMensagem["morador"] = mensagemMoradores
     return corpoMensagem, 200, header
