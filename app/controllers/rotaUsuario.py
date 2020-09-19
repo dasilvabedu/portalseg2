@@ -27,3 +27,23 @@ def api_usuario_inativo(id):
 def api_usuario_senha():
     resultado, retorno, header = gestaoUsuario.usuarioRecuperaSenha()
     return jsonify(resultado), retorno, header
+
+@app.route("/seguranca_barragem/users/email", methods=["POST","GET"])
+def api_usuario_email_inclui_lista():
+    resultado, retorno, header = gestaoUsuario.emailIncluiLista()
+    return jsonify(resultado), retorno, header
+
+@app.route("/seguranca_barragem/users/email/<int:id>", methods=["DELETE"])
+def api_usuario_email_exclui(id):
+    resultado, retorno, header = gestaoUsuario.emailExclui(id)
+    return jsonify(resultado), retorno, header
+
+@app.route("/seguranca_barragem/users/telefone", methods=["POST","GET"])
+def api_usuario_telefone_inclui_lista():
+    resultado, retorno, header = gestaoUsuario.telefoneIncluiLista()
+    return jsonify(resultado), retorno, header
+
+@app.route("/seguranca_barragem/users/telefone/<int:id>", methods=["DELETE"])
+def api_usuario_telefone_exclui(id):
+    resultado, retorno, header = gestaoUsuario.telefoneExclui(id)
+    return jsonify(resultado), retorno, header

@@ -302,7 +302,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
             cheque["message"] = cheque["message"] + " - Nome do usuário é obrigatorio"
         erro = True
 
-    if usu_email is not None and len(usu_celular) > 0:
+    if usu_email is not None and len(usu_email) > 0:
         if not validate_email(usu_email):
             if not erro:
                 cheque["message"] = "Email invalido"
@@ -933,3 +933,203 @@ def novoToken(usu_identificador, usu_celular, usu_email, usu_nome):
             dicionarioRetorno["allowed_transactions"] = codigoTransacao
 
     return dicionarioRetorno, 200, {}
+
+def emailIncluiLista():
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 404, {}
+    token, dadosToken = gestaoAutenticacao.expandeToken()
+
+    if request.method == "GET":
+        resultado,lista = dicionarioEmail(dadosToken["sub"])
+        if resultado == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
+        resultadoFinal = {}
+        resultadoFinal['email_others'] = lista
+        return resultadoFinal, 200, header
+
+    elif request.method == "POST":
+        if not request.json:
+            return {"message": "Dados de entrada não fornecidos"}, 404, header
+        entrada = request.json
+        listaEmails = entrada.get("email_others")
+        if listaEmails is None:
+            return {"message": "Lista de Emails obrigatoria"}, 404, header
+        erro = False
+        cheque = {}
+        for i in range(len(listaEmails)):
+            if not validate_email(listaEmails[i]):
+                if erro == False:
+                    cheque["message"] = "Email " + str(i+1) + " é inválido"
+                    erro = True
+                else:
+                   cheque["message"] = cheque["message"] + "  - Email " + str(i+1) + " é inválido"
+
+        if erro:
+            return cheque, 404, header
+
+        # recupera o próximo identificador
+        campo = "max(uea_identificador)"
+        dados, retorno, mensagemRetorno = acessoBanco.leDado("uea_emailadicional", None, campo)
+        if retorno != 200:
+            return mensagemRetorno, retorno, header
+        if dados[0][0] is None:
+            identificadorAtual = 0
+        else:
+            identificadorAtual = dados[0][0]
+
+        agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        for i in range(len(listaEmails)):
+            campo = "uea_identificador"
+            condicao = " WHERE usu_identificador = " + str(dadosToken["sub"]) + " AND uea_email = '" + listaEmails[i] + "'"
+            dados, retorno, mensagemRetorno = acessoBanco.leDado("uea_emailadicional", condicao, campo)
+            if retorno == 400:
+                return mensagemRetorno, retorno, header
+            if retorno == 404:
+                identificadorAtual = identificadorAtual + 1
+                campos = (
+                    "uea_identificador, uea_email, usu_identificador, uea_identificadoratualizacao,"
+                    "uea_dataatualizacao"
+                )
+                valores = (
+                    str(identificadorAtual)
+                    + ",'" + listaEmails[i]  + "'"
+                    + "," + str(dadosToken["sub"])
+                    + "," + str(dadosToken["sub"])
+                    + ",'" + str(agora) + "'"
+                )
+                dados, retorno, mensagemRetorno = acessoBanco.insereDado("uea_emailadicional", campos, valores)
+                if retorno == 400:
+                    return mensagemRetorno, retorno, header
+        return {}, 201, header
+
+def telefoneIncluiLista():
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 404, {}
+    token, dadosToken = gestaoAutenticacao.expandeToken()
+
+    if request.method == "GET":
+        resultado,listaCelular = dicionarioCelular(dadosToken["sub"])
+        if resultado == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
+        print ("aqui", listaCelular)
+        resultado,listaTelefone = dicionarioTelefone(dadosToken["sub"])
+        print ("aqui 2", listaTelefone)
+        if resultado == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
+        listaFinal = []
+        if listaCelular != []:
+            listaFinal = listaCelular
+        listaFinal = listaFinal + listaTelefone
+
+        resultadoFinal = {}
+        resultadoFinal['general_phone_others'] = listaFinal
+        return resultadoFinal, 200, header
+
+    elif request.method == "POST":
+        if not request.json:
+            return {"message": "Dados de entrada não fornecidos"}, 404, header
+        entrada = request.json
+        print (entrada)
+        listaTelefones = entrada.get("general_phone_others")
+        if listaTelefones is None:
+            return {"message": "Lista de Telefones obrigatoria"}, 404, header
+        retorno, mensagem, listaCelular, listaFixo = validaTelefone(listaTelefones)
+        if not retorno:
+            return mensagem, 404, header
+
+        erro = False
+        cheque = {}
+
+        return {}, 201, header
+
+def emailExclui(id):
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 404, {}
+
+    # exclui o elemento
+    condicao = " WHERE uea_identificador = " + str(id)
+    dados, retorno, mensagemRetorno = acessoBanco.exclueDado("uea_emailadicional", condicao)
+    if retorno == 400:
+        return mensagemRetorno, retorno, header
+    elif retorno == 404:
+        return {"message": "Identificador inexistente"}, 404, header
+    return {}, 200, header
+
+def dicionarioCelular(sub):
+    # recupera os celulares adicionais
+    codigo = []
+    campo = "uca_identificador,uca_celular"
+    condicao = "WHERE usu_identificador = " + str(sub)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("uca_celularadicional", condicao, campo)
+    if retorno == 400:
+        return 400, codigo
+    for i in range(len(dados)):
+        detalhe = {}
+        detalhe['identificador'] = str(dados[i][0])
+        detalhe['tipo'] = "celular"
+        detalhe['telefone'] = str(dados[i][1])
+        detalhe["ramal"] = ""
+        codigo.append(detalhe)
+    return 200, codigo
+
+def dicionarioEmail(sub):
+    # recupera os emails adicionais
+    codigo = []
+    campo = "uea_identificador,uea_email"
+    condicao = "WHERE usu_identificador = " + str(sub)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("uea_emailadicional", condicao, campo)
+    if retorno == 400:
+        return 400, codigo
+    for i in range(len(dados)):
+        detalhe = {}
+        detalhe['identificador'] = str(dados[i][0])
+        detalhe['email'] = str(dados[i][1])
+        codigo.append(detalhe)
+    return 200, codigo
+
+def dicionarioTelefone(sub):
+    # recupera os telefones adicionais
+    codigo = []
+    campo = "uta_identificador,uta_telefone, uta_ramal"
+    condicao = "WHERE usu_identificador = " + str(sub)
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("uta_telefoneadicional", condicao, campo)
+    if retorno == 400:
+        return 400, codigo
+    if len(dados) == 0:
+        return 200, codigo
+    for i in range(len(dados)):
+        detalhe = {}
+        detalhe['identificador'] = str(dados[i][0])
+        detalhe['tipo'] = "fixo"
+        detalhe['telefone'] = str(dados[i][1])
+        detalhe["ramal"] = str(dados[i][2])
+        codigo.append(detalhe)
+    return 200, codigo
+
+def validaTelefone(listaTelefones):
+    print (listaTelefones)
+
+    usu_celular = None
+    erro = False
+    cheque = {}
+    listaCelular = []
+    listaFixo = []
+    if usu_celular is not None and len(usu_celular) > 0:
+        if not inteiro(usu_celular):
+            if not erro:
+                cheque["message"] = "Celular deve ser numérico"
+            else:
+                cheque["message"] = cheque["message"] + " # Celular deve ser numérico"
+            erro = True
+        elif int(usu_celular) < 10000000000 or int(usu_celular) > 99000000000:
+            if not erro:
+                cheque["message"] = "Celular deve possuir 9 dígitos"
+            else:
+                cheque["message"] = cheque["message"] + " # Celular deve possuir 9 dígitos"
+            erro = True
+        else:
+            alteracao = True
+    return 200, cheque, listaCelular, listaFixo
