@@ -38,12 +38,8 @@ def api_usuario_email_exclui(id):
     resultado, retorno, header = gestaoUsuario.emailExclui(id)
     return jsonify(resultado), retorno, header
 
-@app.route("/seguranca_barragem/users/telefone", methods=["POST","GET"])
-def api_usuario_telefone_inclui_lista():
-    resultado, retorno, header = gestaoUsuario.telefoneIncluiLista()
+@app.route("/seguranca_barragem/users/telefone", methods=["POST","GET","DELETE"])
+def api_usuario_telefone():
+    resultado, retorno, header = gestaoUsuario.telefoneIncluiListaDeleta()
     return jsonify(resultado), retorno, header
 
-@app.route("/seguranca_barragem/users/telefone/<int:id>", methods=["DELETE"])
-def api_usuario_telefone_exclui(id):
-    resultado, retorno, header = gestaoUsuario.telefoneExclui(id)
-    return jsonify(resultado), retorno, header

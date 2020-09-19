@@ -1003,7 +1003,7 @@ def emailIncluiLista():
                     return mensagemRetorno, retorno, header
         return {}, 201, header
 
-def telefoneIncluiLista():
+def telefoneIncluiListaDeleta():
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
         return mensagem, 404, {}
@@ -1036,21 +1036,140 @@ def telefoneIncluiLista():
         if listaTelefones is None:
             return {"message": "Lista de Telefones obrigatoria"}, 404, header
         retorno, mensagem, listaCelular, listaFixo = validaTelefone(listaTelefones)
-        if not retorno:
+        if retorno == 404:
             return mensagem, 404, header
+        print(listaFixo)
+        print(listaCelular)
 
-        erro = False
-        cheque = {}
+        # inclui celular
+        for i in range(len(listaCelular)):
+            campo = "max(uca_identificador)"
+            dados, retorno, mensagemRetorno = acessoBanco.leDado("uca_celularadicional", None, campo)
+            if retorno != 200:
+                return mensagemRetorno, retorno, header
+            if dados[0][0] is None:
+                identificadorAtual = 0
+            else:
+                identificadorAtual = dados[0][0]
 
+            agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+            campo = "uca_identificador"
+            condicao = (
+                    " WHERE usu_identificador = " + str(dadosToken["sub"]) +
+                    " AND uca_celular = " + str(listaCelular[i])
+            )
+            dados, retorno, mensagemRetorno = acessoBanco.leDado("uca_celularadicional", condicao, campo)
+            if retorno == 400:
+                return mensagemRetorno, retorno, header
+            if retorno == 404:
+                identificadorAtual = identificadorAtual + 1
+                campos = (
+                    "uca_identificador, uca_celular, usu_identificador, uca_identificadoratualizacao,"
+                    "uca_dataatualizacao"
+                )
+                valores = (
+                        str(identificadorAtual)
+                        + "," + str(listaCelular[i]) + ""
+                        + "," + str(dadosToken["sub"])
+                        + "," + str(dadosToken["sub"])
+                        + ",'" + str(agora) + "'"
+                )
+                dados, retorno, mensagemRetorno = acessoBanco.insereDado("uca_celularadicional", campos, valores)
+                if retorno == 400:
+                    return mensagemRetorno, retorno, header
+
+        # inclui fixo
+        for i in range(len(listaFixo)):
+            campo = "max(uta_identificador)"
+            dados, retorno, mensagemRetorno = acessoBanco.leDado("uta_telefoneadicional", None, campo)
+            if retorno != 200:
+                return mensagemRetorno, retorno, header
+            if dados[0][0] is None:
+                identificadorAtual = 0
+            else:
+                identificadorAtual = dados[0][0]
+
+            agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+
+            campo = "uta_identificador"
+            condicao = (
+                    " WHERE usu_identificador = " + str(dadosToken["sub"]) +
+                    " AND uta_telefone = " + str(listaFixo[i]["numero"]) +
+                    " AND uta_ramal = '" + listaFixo[i]["ramal"] + "'"
+            )
+            dados, retorno, mensagemRetorno = acessoBanco.leDado("uta_telefoneadicional", condicao, campo)
+            if retorno == 400:
+                return mensagemRetorno, retorno, header
+            if retorno == 404:
+                identificadorAtual = identificadorAtual + 1
+                campos = (
+                    "uta_identificador, uta_telefone, uta_ramal,"
+                    "usu_identificador, uta_identificadoratualizacao,"
+                    "uta_dataatualizacao"
+                )
+                valores = (
+                        str(identificadorAtual)
+                        + "," + str(listaFixo[i]["numero"])
+                        + ",'" + str(listaFixo[i]["ramal"]) + "'"
+                        + "," + str(dadosToken["sub"])
+                        + "," + str(dadosToken["sub"])
+                        + ",'" + str(agora) + "'"
+                )
+                dados, retorno, mensagemRetorno = acessoBanco.insereDado("uta_telefoneadicional", campos, valores)
+                if retorno == 400:
+                    return mensagemRetorno, retorno, header
         return {}, 201, header
+
+    elif request.method == "DELETE":
+        if not request.json:
+            return {"message": "Dados de entrada não fornecidos"}, 404, header
+        entrada = request.json
+        print (entrada)
+        listaTelefones = entrada.get("general_phone_others")
+        if listaTelefones is None:
+            return {"message": "Lista de Telefones obrigatoria"}, 404, header
+
+        retorno, mensagem, listaCelular, listaFixo = validaTelefoneExcluir(listaTelefones)
+        if retorno == 404:
+            return mensagem, 404, header
+        print(listaFixo)
+        print(listaCelular)
+        print(dadosToken)
+        # exclui celular
+        for i in range(len(listaCelular)):
+            condicao = (
+                    " WHERE uca_identificador = " + str(listaCelular[i]) +
+                    " AND usu_identificador = " + str(dadosToken["sub"])
+            )
+            dados, retorno, mensagemRetorno = acessoBanco.exclueDado("uca_celularadicional", condicao)
+            if retorno == 400:
+                return mensagemRetorno, retorno, header
+            elif retorno == 404:
+                return {"message": "Identificador de Celular inexistente"}, 404, header
+
+        # exclui fixo
+        for i in range(len(listaFixo)):
+            condicao = (
+                    " WHERE uta_identificador = " + str(listaFixo[i]) +
+                    " AND usu_identificador = " + str(dadosToken["sub"])
+            )
+            dados, retorno, mensagemRetorno = acessoBanco.exclueDado("uta_telefoneadicional", condicao)
+            if retorno == 400:
+                return mensagemRetorno, retorno, header
+            elif retorno == 404:
+                return {"message": "Identificador de Telefone Fixo inexistente"}, 404, header
+
+        return {}, 200, header
 
 def emailExclui(id):
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
         return mensagem, 404, {}
+    token, dadosToken = gestaoAutenticacao.expandeToken()
 
     # exclui o elemento
-    condicao = " WHERE uea_identificador = " + str(id)
+    condicao = " WHERE uea_identificador = " + str(id)  + " AND usu_identificador = " + str(dadosToken["sub"])
     dados, retorno, mensagemRetorno = acessoBanco.exclueDado("uea_emailadicional", condicao)
     if retorno == 400:
         return mensagemRetorno, retorno, header
@@ -1112,24 +1231,95 @@ def dicionarioTelefone(sub):
 def validaTelefone(listaTelefones):
     print (listaTelefones)
 
-    usu_celular = None
     erro = False
     cheque = {}
     listaCelular = []
     listaFixo = []
-    if usu_celular is not None and len(usu_celular) > 0:
-        if not inteiro(usu_celular):
+    print(len(listaTelefones))
+    print(listaTelefones[0])
+    print(listaTelefones[1])
+    for i in range(len(listaTelefones)):
+        print(i)
+        print(listaTelefones[i])
+        print(type(listaTelefones[i]))
+        print (listaTelefones[i]["tipo"] in listaTelefones[i])
+        print(listaTelefones[i]["tipo"])
+        if not "tipo" in listaTelefones[i] or listaTelefones[i]["tipo"] not in ("celular","fixo"):
             if not erro:
-                cheque["message"] = "Celular deve ser numérico"
+                cheque["message"] = "Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
             else:
-                cheque["message"] = cheque["message"] + " # Celular deve ser numérico"
+                cheque["message"] = cheque["message"] + " # Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
             erro = True
-        elif int(usu_celular) < 10000000000 or int(usu_celular) > 99000000000:
+
+        print(listaTelefones[i]["numero"])
+        if not "numero" in listaTelefones[i] or not acessoBanco.inteiro(listaTelefones[i]["numero"]):
             if not erro:
-                cheque["message"] = "Celular deve possuir 9 dígitos"
+                cheque["message"] = "Registro " + str(i+1) + " - Número do telefone inválido"
             else:
-                cheque["message"] = cheque["message"] + " # Celular deve possuir 9 dígitos"
+                cheque["message"] = cheque["message"] + " # Registro " + str(i+1) + " - Número do telefone inválido"
             erro = True
+
+    if erro:
+            return 404, cheque, listaCelular, listaFixo
+
+    print (i)
+
+    for i in range(len(listaTelefones)):
+        print(listaTelefones[i]["tipo"])
+        if listaTelefones[i]["tipo"] == "celular":
+            listaCelular.append(int(listaTelefones[i]["numero"]))
         else:
-            alteracao = True
-    return 200, cheque, listaCelular, listaFixo
+            detalhe = {}
+            detalhe["numero"] = listaTelefones[i]["numero"]
+            if "ramal" in listaTelefones[i]:
+                detalhe["ramal"] = listaTelefones[i]["ramal"]
+            else:
+                detalhe["ramal"] = ""
+            listaFixo.append(detalhe)
+
+    return 200, {}, listaCelular, listaFixo
+
+def validaTelefoneExcluir(listaTelefones):
+    print (listaTelefones)
+
+    erro = False
+    cheque = {}
+    listaCelular = []
+    listaFixo = []
+    print(len(listaTelefones))
+    print(listaTelefones[0])
+    print(listaTelefones[1])
+    for i in range(len(listaTelefones)):
+        print(i)
+        print(listaTelefones[i])
+        print(type(listaTelefones[i]))
+        print (listaTelefones[i]["tipo"] in listaTelefones[i])
+        print(listaTelefones[i]["tipo"])
+        if not "tipo" in listaTelefones[i] or listaTelefones[i]["tipo"] not in ("celular","fixo"):
+            if not erro:
+                cheque["message"] = "Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
+            else:
+                cheque["message"] = cheque["message"] + " # Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
+            erro = True
+
+        print(listaTelefones[i]["identificador"])
+        if not "identificador" in listaTelefones[i] or not acessoBanco.inteiro(listaTelefones[i]["identificador"]):
+            if not erro:
+                cheque["message"] = "Registro " + str(i+1) + " - Identificador inválido"
+            else:
+                cheque["message"] = cheque["message"] + " # Registro " + str(i+1) + " - Identificador inválido"
+            erro = True
+
+    if erro:
+            return 404, cheque, listaCelular, listaFixo
+
+    print (i)
+
+    for i in range(len(listaTelefones)):
+        print(listaTelefones[i]["tipo"])
+        if listaTelefones[i]["tipo"] == "celular":
+            listaCelular.append(int(listaTelefones[i]["identificador"]))
+        else:
+            listaFixo.append(int(listaTelefones[i]["identificador"]))
+
+    return 200, {}, listaCelular, listaFixo
