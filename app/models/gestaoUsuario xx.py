@@ -19,7 +19,7 @@ def trataLogin(usu_login, usu_senha):
         return {"message": "Usuário e/ou senha inválido(s)"}, 400, {}
 
     # realiza consulta no banco
-    if acessoBanco.inteiro(usu_login):
+    if inteiro(usu_login):
         condicao = "WHERE usu_autenticacao = 'ativo' and usu_celular = " + usu_login
     else:
         condicao = "WHERE usu_autenticacao = 'ativo' and usu_email = '" + usu_login + "'"
@@ -198,34 +198,12 @@ def usuarioInativo(id):
         return {"message": "Erro de acesso ao banco"}, 400, header
     return {}, 200, {}
 
-def usuarioAtivo(id):
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
-    if not checa:
-        return mensagem, 404, ""
-
-    campos = "count(usu_identificador)"
-    condicao = "WHERE usu_identificador = " + str(id)
-    dados, retorno, mensagemRetorno = acessoBanco.leDado("usu_usuario", condicao, campos)
-
-    if retorno == 400:
-        return {"message": "Erro de acesso ao banco"}, 400, header
-    if dados[0][0] == 0:
-        return {"message": "Usuário Inexistente"}, 404, header
-
-    condicao = "WHERE usu_identificador = " + str(id)
-    valores = "usu_autenticacao = 'ativo'"
-    dados, retorno, mensagemRetorno = acessoBanco.alteraDado("usu_usuario", valores, condicao)
-    if retorno == 400:
-        return {"message": "Erro de acesso ao banco"}, 400, header
-    return {}, 200, {}
 
 def usuarioExistente():
     if not request.json:
         return {'"message": "Dados de entrada não fornecidos"'}, 404, {}
 
     entrada = request.json
-    print(entrada)
-    print(type(entrada))
     usu_login = entrada.get("username")
     usu_senha = entrada.get("password")
     resultadoFinal, retorno, header = trataLogin(usu_login, usu_senha)
@@ -304,7 +282,7 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
         erro = True
 
     if usu_celular is not None and len(usu_celular) > 0:
-        if not acessoBanco.inteiro(usu_celular):
+        if not inteiro(usu_celular):
             if not erro:
                 cheque["message"] = "Celular deve ser numérico"
             else:
@@ -378,9 +356,8 @@ def trataUsuarioIncluido(usu_celular, usu_email, usu_senha, usu_nome):
 
 def listaUsuario():
 
-    camposDesejados = "usu_identificador, usu_nome, usu_celular, usu_email, usu_autenticacao"
- #   condicao = "WHERE usu_autenticacao = 'ativo'"
-    condicao = None
+    camposDesejados = "usu_identificador, usu_nome, usu_celular, usu_email"
+    condicao = "WHERE usu_autenticacao = 'ativo'"
     dados, retorno, mensagemRetorno = acessoBanco.leDado("usu_usuario", condicao, camposDesejados)
 
     if retorno == 400:
@@ -394,11 +371,6 @@ def listaUsuario():
         mensagem["name"] = dados[i][1]
         mensagem["phone_number"] = dados[i][2]
         mensagem["email"] = dados[i][3]
-        if dados[i][4] == "ativo":
-            mensagem["active"] = True
-        else:
-            mensagem["active"] = False
-        mensagem["status"] = dados[i][4]
         dadosRetorno.append(mensagem)
     dicRetorno["users"] = dadosRetorno
     return dicRetorno, 200
@@ -414,7 +386,7 @@ def trataUsuarioAlterado(id, usu_celular, usu_email, usu_senha, usu_nome):
     senhaCriptografada = None
 
     if usu_celular is not None and len(usu_celular) > 0:
-        if not acessoBanco.inteiro(usu_celular):
+        if not inteiro(usu_celular):
             if not erro:
                 cheque["message"] = "Celular deve ser numérico"
             else:
@@ -577,6 +549,14 @@ def trataUsuarioDeletado(id):
     return True, {}
 
 
+def inteiro(valor):
+    try:
+        int(valor)
+    except ValueError:
+        return False
+    return True
+
+
 def usuarioTransacaoValidada():
     checa, header = gestaoAutenticacao.validaToken()
     if not checa:
@@ -598,7 +578,7 @@ def usuarioTransacaoValidada():
         return resultadoFinal, 404, header
 
     # realiza consulta no banco
-    if acessoBanco.inteiro(usu_login):
+    if inteiro(usu_login):
         condicao = "WHERE usu_autenticacao = 'ativo' and usu_celular = " + usu_login
     else:
         condicao = "WHERE usu_autenticacao = 'ativo' and usu_email = '" + usu_login + "'"
@@ -1022,71 +1002,6 @@ def emailIncluiLista():
                 if retorno == 400:
                     return mensagemRetorno, retorno, header
         return {}, 201, header
-
-def atualizaPerfil():
-    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
-    if not checa:
-        return mensagem, 404, {}
-    token, dadosToken = gestaoAutenticacao.expandeToken()
-
-    if not request.json:
-        return {"message": "Dados de entrada não fornecidos"}, 404, header
-
-    entrada = request.json
-    usuario = entrada.get("user_id")
-    listaPerfis = entrada.get("roles_id")
-
-    cheque = {}
-    erro = False
-
-    if usuario is None or not acessoBanco.inteiro(usuario):
-        cheque["message"] = "Código de usuário obrigatório"
-        erro = True
-    else:
-        # verifica se existe o usurio
-        campo = "usu_nome"
-        condicao = " WHERE usu_identificador = " + str(usuario)
-        dados, retorno, mensagemRetorno = acessoBanco.leDado("usu_usuario", condicao, campo)
-        if retorno == 400:
-            return mensagemRetorno, retorno, header
-        elif retorno != 200:
-            cheque["message"] = "Usuário inexistente"
-            erro = True
-
-    if listaPerfis is None or len(listaPerfis) == 0 or type(listaPerfis) is not list:
-        if not erro:
-            cheque["message"] = "Lista de Perfis de Acesso é obrigatoria"
-        else:
-            cheque["message"] = cheque["message"] + " - Lista de Perfis de Acesso é obrigatoria"
-        erro = True
-    else:
-        for i in range(len(listaPerfis)):
-            if not acessoBanco.inteiro(listaPerfis[i]):
-                if erro == False:
-                    cheque["message"] = "Id do Perfil de Acesso " + str(i+1) + " é inválido"
-                    erro = True
-                else:
-                   cheque["message"] = cheque["message"] + "  - Id do Perfil de Acesso " + str(i+1) + " é inválido"
-
-            # verifica se existe o perfil de acesso
-            campo = "pfa_identificaor"
-            condicao = " WHERE pfa_identificador = " + str(listaPerfis[i])
-            dados, retorno, mensagemRetorno = acessoBanco.leDado("pfa_perfilacesso", condicao, campo)
-            if retorno == 400:
-                return mensagemRetorno, retorno, header
-            elif retorno != 200:
-                if erro == False:
-                    cheque["message"] = "Id do Perfil de Acesso " + str(i + 1) + " inexistente"
-                    erro = True
-                else:
-                    cheque["message"] = cheque["message"] + "  - Id do Perfil de Acesso " + str(i + 1) + " inexistente"
-
-    if erro:
-        return cheque, 404, header
-
-    # atualiza os dados
-    dados, retorno, mensagemRetorno = acessoBanco.atualizaAcesso(usuario, listaPerfis, dadosToken['sub'])
-    return mensagemRetorno, retorno, header
 
 def telefoneIncluiListaDeleta():
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
