@@ -1013,9 +1013,8 @@ def telefoneIncluiListaDeleta():
         resultado,listaCelular = dicionarioCelular(dadosToken["sub"])
         if resultado == 400:
             return {"message": "Erro de acesso ao banco"}, 400, header
-        print ("aqui", listaCelular)
+
         resultado,listaTelefone = dicionarioTelefone(dadosToken["sub"])
-        print ("aqui 2", listaTelefone)
         if resultado == 400:
             return {"message": "Erro de acesso ao banco"}, 400, header
         listaFinal = []
@@ -1031,15 +1030,12 @@ def telefoneIncluiListaDeleta():
         if not request.json:
             return {"message": "Dados de entrada não fornecidos"}, 404, header
         entrada = request.json
-        print (entrada)
         listaTelefones = entrada.get("general_phone_others")
         if listaTelefones is None:
             return {"message": "Lista de Telefones obrigatoria"}, 404, header
         retorno, mensagem, listaCelular, listaFixo = validaTelefone(listaTelefones)
         if retorno == 404:
             return mensagem, 404, header
-        print(listaFixo)
-        print(listaCelular)
 
         # inclui celular
         for i in range(len(listaCelular)):
@@ -1125,7 +1121,7 @@ def telefoneIncluiListaDeleta():
         if not request.json:
             return {"message": "Dados de entrada não fornecidos"}, 404, header
         entrada = request.json
-        print (entrada)
+
         listaTelefones = entrada.get("general_phone_others")
         if listaTelefones is None:
             return {"message": "Lista de Telefones obrigatoria"}, 404, header
@@ -1133,9 +1129,7 @@ def telefoneIncluiListaDeleta():
         retorno, mensagem, listaCelular, listaFixo = validaTelefoneExcluir(listaTelefones)
         if retorno == 404:
             return mensagem, 404, header
-        print(listaFixo)
-        print(listaCelular)
-        print(dadosToken)
+
         # exclui celular
         for i in range(len(listaCelular)):
             condicao = (
@@ -1229,21 +1223,13 @@ def dicionarioTelefone(sub):
     return 200, codigo
 
 def validaTelefone(listaTelefones):
-    print (listaTelefones)
 
     erro = False
     cheque = {}
     listaCelular = []
     listaFixo = []
-    print(len(listaTelefones))
-    print(listaTelefones[0])
-    print(listaTelefones[1])
+
     for i in range(len(listaTelefones)):
-        print(i)
-        print(listaTelefones[i])
-        print(type(listaTelefones[i]))
-        print (listaTelefones[i]["tipo"] in listaTelefones[i])
-        print(listaTelefones[i]["tipo"])
         if not "tipo" in listaTelefones[i] or listaTelefones[i]["tipo"] not in ("celular","fixo"):
             if not erro:
                 cheque["message"] = "Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
@@ -1251,7 +1237,6 @@ def validaTelefone(listaTelefones):
                 cheque["message"] = cheque["message"] + " # Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
             erro = True
 
-        print(listaTelefones[i]["numero"])
         if not "numero" in listaTelefones[i] or not acessoBanco.inteiro(listaTelefones[i]["numero"]):
             if not erro:
                 cheque["message"] = "Registro " + str(i+1) + " - Número do telefone inválido"
@@ -1262,10 +1247,7 @@ def validaTelefone(listaTelefones):
     if erro:
             return 404, cheque, listaCelular, listaFixo
 
-    print (i)
-
     for i in range(len(listaTelefones)):
-        print(listaTelefones[i]["tipo"])
         if listaTelefones[i]["tipo"] == "celular":
             listaCelular.append(int(listaTelefones[i]["numero"]))
         else:
@@ -1280,21 +1262,13 @@ def validaTelefone(listaTelefones):
     return 200, {}, listaCelular, listaFixo
 
 def validaTelefoneExcluir(listaTelefones):
-    print (listaTelefones)
 
     erro = False
     cheque = {}
     listaCelular = []
     listaFixo = []
-    print(len(listaTelefones))
-    print(listaTelefones[0])
-    print(listaTelefones[1])
+
     for i in range(len(listaTelefones)):
-        print(i)
-        print(listaTelefones[i])
-        print(type(listaTelefones[i]))
-        print (listaTelefones[i]["tipo"] in listaTelefones[i])
-        print(listaTelefones[i]["tipo"])
         if not "tipo" in listaTelefones[i] or listaTelefones[i]["tipo"] not in ("celular","fixo"):
             if not erro:
                 cheque["message"] = "Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
@@ -1302,7 +1276,6 @@ def validaTelefoneExcluir(listaTelefones):
                 cheque["message"] = cheque["message"] + " # Registro " + str(i+1) + " - Tipo deve ser 'celular' ou 'fixo'"
             erro = True
 
-        print(listaTelefones[i]["identificador"])
         if not "identificador" in listaTelefones[i] or not acessoBanco.inteiro(listaTelefones[i]["identificador"]):
             if not erro:
                 cheque["message"] = "Registro " + str(i+1) + " - Identificador inválido"
@@ -1313,10 +1286,8 @@ def validaTelefoneExcluir(listaTelefones):
     if erro:
             return 404, cheque, listaCelular, listaFixo
 
-    print (i)
 
     for i in range(len(listaTelefones)):
-        print(listaTelefones[i]["tipo"])
         if listaTelefones[i]["tipo"] == "celular":
             listaCelular.append(int(listaTelefones[i]["identificador"]))
         else:

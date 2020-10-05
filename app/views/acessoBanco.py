@@ -97,7 +97,6 @@ def dado(tabela, condicao=None, camposDesejados=None, limite=None):
         if conn is not None:
             conn.close()
 
-
 def alteraDado(tabela, valores, condicao=None):
 
     conn = None
@@ -129,7 +128,6 @@ def alteraDado(tabela, valores, condicao=None):
     finally:
         if conn is not None:
             conn.close()
-
 
 def alteraDadoMultiplo(tabela, valores, condicao=None):
 
@@ -165,7 +163,6 @@ def alteraDadoMultiplo(tabela, valores, condicao=None):
         if conn is not None:
             conn.close()
 
-
 def leDado(tabela, condicao=None, camposDesejados=None):
 
     conn = None
@@ -190,9 +187,8 @@ def leDado(tabela, condicao=None, camposDesejados=None):
 
         if condicao is not None:
             comando = comando + " " + condicao
-
         resultado = []
-
+        print(comando)
         cur.execute(comando)
         recset = cur.fetchall()
         for rec in recset:
@@ -211,7 +207,6 @@ def leDado(tabela, condicao=None, camposDesejados=None):
         if conn is not None:
             conn.close()
 
-
 def insereDado(tabela, camposDesejados=None, valores=None):
 
     conn = None
@@ -226,8 +221,8 @@ def insereDado(tabela, camposDesejados=None, valores=None):
 
         # execucao de comando
         comando = "INSERT INTO " + tabela + " (" + camposDesejados + ") values (" + valores + ")"
-
         resultado = []
+        print(comando)
         cur.execute(comando)
         conn.commit()
 
@@ -240,7 +235,6 @@ def insereDado(tabela, camposDesejados=None, valores=None):
     finally:
         if conn is not None:
             conn.close()
-
 
 def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
 
@@ -266,7 +260,7 @@ def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
         return resultado, 201, ""
 
     except (Exception, psycopg2.DatabaseError) as error:
-        conn.roolback()
+
         cur.close()
         return [], 400, "Erro do sistema: " + str(error)
 
@@ -274,6 +268,49 @@ def insereDadoMultiplo(tabela, camposDesejados=None, valores=None):
         if conn is not None:
             conn.close()
 
+def atualizaAcesso(usuario, listaPerfis, atualizador):
+
+    conn = None
+    try:
+        # conecta ao servidor PostgreSQL
+        conn = psycopg2.connect(database_url)
+
+        if conn is None:
+            return [], 400, "Conexão ao banco falhou"
+        # criacao de cursor
+        cur = conn.cursor()
+
+        #  exclue os perfis do usuário
+        comando = "DELETE FROM public.usu_pfa_usuario_perfilacesso WHERE usu_identificador = " + str(usuario)
+        cur.execute(comando)
+
+        # inclui os novos dados
+        agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        resultado = []
+        for i in range(len(listaPerfis)):
+            comando = (
+                    "INSERT INTO public.usu_pfa_usuario_perfilacesso",
+                    "(usu_identificador, pfa_identificador,",
+                    "usu_pfa_identificadoratualizacao, usu_pfa_dataatualizacao)",
+                    "VALUES(",
+                    str(usuario) + "," + str(listaPerfis[i]) + "," +
+                    str(atualizador) + ",'" + agora + "')"
+            )
+            cur.execute(comando)
+        conn.commit()
+
+        # encerra conexao ao PostgreSQL
+        cur.close()
+        return resultado, 201, ""
+
+    except (Exception, psycopg2.DatabaseError) as error:
+
+        cur.close()
+        return [], 400, "Erro do sistema: " + str(error)
+
+    finally:
+        if conn is not None:
+            conn.close()
 
 def exclueDado(tabela, condicao):
 
@@ -320,6 +357,174 @@ def exclueDado(tabela, condicao):
         if conn is not None:
             conn.close()
 
+def exclueDocumento(id):
+
+    conn = None
+
+    try:
+        # conecta ao servidor PostgreSQL
+        conn = psycopg2.connect(database_url)
+
+        if conn is None:
+            return [], 400, "Conexão ao banco falhou"
+        # criacao de cursor
+        cur = conn.cursor()
+
+        # exclue os relacionamentos com empreendimentos
+        comando = "DELETE FROM doc_emp_documentacaoassociada_empreendimento WHERE doc_identificador = " + str(id)
+        cur.execute(comando)
+
+        # exclue os documentos
+        comando = "DELETE FROM doc_documentacaoassociada WHERE doc_identificador = " + str(id)
+        cur.execute(comando)
+
+
+        conn.commit()
+
+        # encerra conexao ao PostgreSQL
+        cur.close()
+        return [], 200, ""
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        return [], 400, "Erro do sistema: " + str(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
+def insereDocumento( grupo, nome, descricao, listaEmpreendimento, documento, usuario):
+
+    conn = None
+
+    try:
+        # conecta ao servidor PostgreSQL
+        conn = psycopg2.connect(database_url)
+
+        if conn is None:
+            return [], 400, "Conexão ao banco falhou"
+        # criacao de cursor
+        cur = conn.cursor()
+
+        #obtem o próximo número
+        camposDesejados = "max(doc_identificador)"
+        dados, retorno, mensagemRetorno = leDado("doc_documentacaoassociada", None, camposDesejados)
+        if retorno == 400:
+            return {"message": "Erro no acesso ao banco de dados"}, retorno, {}
+
+        if dados == [] or dados[0][0] is None:
+            proximoNumero = 1
+        else:
+            proximoNumero = dados[0][0] + 1
+
+        # insere o documento
+        camposDesejados = (
+                "(doc_identificador, doc_grupo, doc_nome, doc_descricao, doc_arquivo,  "
+                + "doc_identificadoratualizacao, doc_dataatualizacao)"
+        )
+        valores = (
+                "(" + str(proximoNumero) + ",'" + grupo + "','" + nome + "','" + descricao
+                + "','" + documento
+                + "'," + str(usuario) + ",'" + datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S") + "')"
+        )
+
+
+        # inclui o documento
+        comando = "INSERT INTO doc_documentacaoassociada " + camposDesejados + " VALUES " + valores
+        cur.execute(comando)
+
+        # inclui os relacionamentos
+        todos = False
+        for i in range(len(listaEmpreendimento)):
+            if listaEmpreendimento[i] != 0:
+                camposDesejados = (
+                        "(doc_identificador, emp_identificador,  "
+                        + "doc_emp_identificadoratualizacao, doc_emp_cia_dataatualizacao)"
+                )
+                valores = (
+                        "(" + str(proximoNumero) + "," + str(listaEmpreendimento[i])
+                        + "," + str(usuario) + ",'" + datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S") + "')"
+                )
+                comando = "INSERT INTO doc_emp_documentacaoassociada_empreendimento " + camposDesejados + " VALUES " + valores
+                cur.execute(comando)
+            else:
+                todos = True
+        if todos:
+            comando = "DELETE FROM doc_emp_documentacaoassociada_empreendimento WHERE doc_identificador = " + str(proximoNumero)
+            cur.execute(comando)
+        conn.commit()
+
+        # encerra conexao ao PostgreSQL
+        cur.close()
+        return [], 201, ""
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        return [], 400, "Erro do sistema: " + str(error)
+    finally:
+        if conn is not None:
+            conn.close()
+
+def alteraDocumento( id, grupo, nome, descricao, listaEmpreendimento, usuario):
+
+    conn = None
+
+    try:
+        # conecta ao servidor PostgreSQL
+        conn = psycopg2.connect(database_url)
+
+        if conn is None:
+            return [], 400, "Conexão ao banco falhou"
+        # criacao de cursor
+        cur = conn.cursor()
+
+        # altera o documento
+        condicao = " WHERE doc_identificador = " + str(id)
+        valores = (
+                "doc_grupo = '" + grupo + "',doc_nome = '" + nome + "',doc_descricao = '" + descricao
+                + "',doc_identificadoratualizacao = " + str(usuario) +
+                ",doc_dataatualizacao = '" + datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S") + "'"
+        )
+        comando = "UPDATE doc_documentacaoassociada SET " + valores + condicao
+        print (comando)
+        cur.execute(comando)
+
+        # altera os relacionamentos
+        if len(listaEmpreendimento) > 0:
+            comando = ("DELETE FROM doc_emp_documentacaoassociada_empreendimento " +
+                       " WHERE doc_identificador = " + str(id)
+            )
+            print(comando)
+            cur.execute(comando)
+
+            todos = False
+            for i in range(len(listaEmpreendimento)):
+                if listaEmpreendimento[i] != 0:
+                    camposDesejados = (
+                            "(doc_identificador, emp_identificador,  "
+                            + "doc_emp_identificadoratualizacao, doc_emp_cia_dataatualizacao)"
+                    )
+                    valores = (
+                            "(" + str(id) + "," + str(listaEmpreendimento[i])
+                            + "," + str(usuario) + ",'" + datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S") + "')"
+                    )
+                    comando = "INSERT INTO doc_emp_documentacaoassociada_empreendimento " + camposDesejados + " VALUES " + valores
+                    print(comando)
+                    cur.execute(comando)
+                else:
+                    todos = True
+            if todos:
+                comando = "DELETE FROM doc_emp_documentacaoassociada_empreendimento WHERE doc_identificador = " + str(id)
+                print(comando)
+                cur.execute(comando)
+        conn.commit()
+
+        # encerra conexao ao PostgreSQL
+        cur.close()
+        return [], 200, ""
+
+    except (Exception, psycopg2.DatabaseError) as error:
+        return [], 400, "Erro do sistema: " + str(error)
+    finally:
+        if conn is not None:
+            conn.close()
 
 def exclueDadoMultiplo(tabela, condicao):
 
@@ -354,7 +559,6 @@ def exclueDadoMultiplo(tabela, condicao):
     finally:
         if conn is not None:
             conn.close()
-
 
 def executaDadoMultiplo(comando):
     """ Deleta registro de uma tabela  no Postgress """

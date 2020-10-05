@@ -5,7 +5,6 @@ from ..models import gestaoAutenticacao
 from flask import request
 import datetime
 
-
 def qualificadorNovoLista(grupo):
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
@@ -32,6 +31,133 @@ def qualificadorNovoLista(grupo):
         return resultadoFinal, retorno, header
 
     return {"message": "Método invalido"}, 400, {}
+
+def qualificadorUsuarioNovoListaDeleta():
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 400, header
+    token, dadosToken = gestaoAutenticacao.expandeToken()
+
+    if request.method == "POST":
+        if not request.json:
+            return {"message": "Dados de entrada não fornecidos"}, 404,  header
+
+        token, dadosToken = gestaoAutenticacao.expandeToken()
+
+        entrada = request.json
+        grupo = entrada.get("grupo")
+        listaIndice = (
+            "empregado", "agente_interno",
+            "agente_externo", "morador_zas",
+            "frequentador_zas", "morador_zss",
+            "frequentador_zss", "outro_interesse"
+        )
+        if grupo is None or type(grupo) is not str or grupo not in listaIndice:
+            return {"message": "Grupo é obrigatório"}, 404,  header
+
+        if grupo == listaIndice[0]:
+            resultadoFinal, retorno = trataEmpregado(entrada, dadosToken["sub"])
+        elif grupo == listaIndice[1]:
+            resultadoFinal, retorno = trataAgenteInterno(entrada, dadosToken["sub"])
+        elif grupo == listaIndice[2]:
+            resultadoFinal, retorno = trataAgenteExterno(entrada, dadosToken["sub"])
+        elif grupo == listaIndice[3]:
+            resultadoFinal, retorno = trataMoradorZAS(entrada, dadosToken["sub"])
+        elif grupo == listaIndice[4]:
+            resultadoFinal, retorno = trataFrequentadorZAS(entrada, dadosToken["sub"])
+        elif grupo == listaIndice[5]:
+            resultadoFinal, retorno = trataMoradorZSS(entrada, dadosToken["sub"])
+        elif grupo == listaIndice[6]:
+            resultadoFinal, retorno = trataFrequentadorZSS(entrada, dadosToken["sub"])
+        elif grupo == listaIndice[7]:
+            resultadoFinal, retorno = trataOutroInteresse(entrada, dadosToken["sub"])
+
+        return resultadoFinal, retorno, header
+
+    elif request.method == "GET":
+        retorno, resultadoFinal = dicionarioPerfil(dadosToken["sub"])
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
+
+        retorno, resultadoFinal1 = dicionarioDemaisPerfis(dadosToken["sub"])
+        if retorno == 400:
+            return {"message": "Erro de acesso ao banco"}, 400, header
+        result = {}
+        result.update(resultadoFinal)
+        result.update(resultadoFinal1)
+        return result, 200, header
+
+    elif request.method == "DELETE":
+        if not request.json:
+            return {"message": "Dados de entrada não fornecidos"}, 404,  header
+
+        token, dadosToken = gestaoAutenticacao.expandeToken()
+
+        entrada = request.json
+        grupo = entrada.get("grupo")
+        identificador = entrada.get("identificador")
+        listaIndice = (
+            "empregado", "agente_interno",
+            "agente_externo", "morador_zas",
+            "frequentador_zas", "morador_zss",
+            "frequentador_zss", "outro_interesse"
+        )
+        listaTabela = (
+            "use_usuarioempregado tb", "uai_usuarioagenteinterno tb",
+            "uae_usuarioagenteexterno tb", "uma_usuariomoradorzas tb",
+            "ufa_usuariofrequentadorzas tb", "ums_usuariomoradorzss tb",
+            "ufs_usuariofrequentadorzss tb", "uou_usuariooutrointeresse tb"
+        )
+
+        if grupo is None or type(grupo) is not str or grupo not in listaIndice:
+            return {"message": "Grupo é obrigatório"}, 404,  header
+
+        if identificador is None or not acessoBanco.inteiro(identificador):
+            return {"message": "Grupo é obrigatório"}, 404,  header
+
+        for i in range(len(listaIndice)):
+            if grupo == listaIndice[i]:
+                condicao = (" WHERE usu_identificador = " + str(dadosToken["sub"]) +
+                        " AND " + listaTabela[i][0:3] + "_identificador = " + str(identificador)
+                        )
+                resultadoFinal, retorno,mensagem = acessoBanco.exclueDado(listaTabela[i], condicao)
+                break
+        if retorno != 200:
+            return mensagem, retorno, header
+        else:
+            return resultadoFinal, retorno, header
+
+    return {"message": "Método invalido"}, 400, {}
+
+def qualificadorUsuarioUnico(grupo):
+    checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
+    if not checa:
+        return mensagem, 400, header
+    token, dadosToken = gestaoAutenticacao.expandeToken()
+
+    listaIndice = (
+        "empregado", "agente_interno",
+        "agente_externo", "morador_zas",
+        "frequentador_zas", "morador_zss",
+        "frequentador_zss", "outro_interesse",
+        "escolaridade", "entendimento",
+        "necessidade"
+    )
+
+    if grupo not in listaIndice:
+        return {"message": "Grupo inválido"}, 404,  header
+
+    if grupo in ("escolaridade", "entendimento", "necessidade"):
+        retorno, resultadoFinal = dicionarioPerfil(dadosToken["sub"],grupo)
+    else:
+        retorno, resultadoFinal = dicionarioDemaisPerfis(dadosToken["sub"],grupo)
+
+
+    if retorno == 400:
+        return {"message": "Erro de acesso ao banco"}, 400, header
+
+    return resultadoFinal, retorno, header
+
 
 
 def qualificadorAtual(grupo, id):
@@ -70,7 +196,6 @@ def qualificadorAtual(grupo, id):
 
     return {"message": "Método invalido"}, 400, header
 
-
 def listaQualificador(grupo):
     prefixo = "ql" + grupo[0] + "_"
     nome = "qualificadorperfil" + grupo
@@ -103,7 +228,6 @@ def listaQualificador(grupo):
         dadosRetorno.append(mensagem)
     dicRetorno["qualificadores"] = dadosRetorno
     return dicRetorno, 200
-
 
 def qualificadorEspecifico(grupo, id):
     prefixo = "ql" + grupo[0] + "_"
@@ -138,7 +262,6 @@ def qualificadorEspecifico(grupo, id):
         mensagem["data"] = dados[i][4].strftime("%Y-%m-%d %H:%M:%S")
 
     return True, mensagem, 200
-
 
 def trataQualificadorIncluido(grupo, usu_identificador, usu_nome, titulo, descricao):
     cheque = {}
@@ -211,7 +334,6 @@ def trataQualificadorIncluido(grupo, usu_identificador, usu_nome, titulo, descri
     mensagem["data"] = agora
 
     return mensagem, 201
-
 
 def trataQualificadorAlterado(grupo, usu_identificador, usu_nome, identificador, titulo, descricao):
     cheque = {}
@@ -308,7 +430,6 @@ def trataQualificadorAlterado(grupo, usu_identificador, usu_nome, identificador,
 
     return mensagem, 200
 
-
 def trataQualificadorDeletado(grupo, identificador):
 
     if identificador is None or not acessoBanco.inteiro(identificador):
@@ -325,7 +446,6 @@ def trataQualificadorDeletado(grupo, identificador):
         return {"message": mensagem}, retorno
 
     return {}, 200
-
 
 def acessoNovoLista():
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
@@ -348,7 +468,6 @@ def acessoNovoLista():
         return resultadoFinal, retorno, header
 
     return {"message": "Método invalido"}, 400, {}
-
 
 def acessoAtual(id):
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
@@ -380,7 +499,6 @@ def acessoAtual(id):
         return dados, 200, header
 
     return {"message": "Método invalido"}, 400, header
-
 
 def listaAcesso():
 
@@ -423,7 +541,6 @@ def listaAcesso():
     dicRetorno["acessos"] = dadosRetorno
     return dicRetorno, 200
 
-
 def acessoEspecifico(id):
 
     camposDesejados = "pfa_identificador, pfa_descricao, pfa_dataatualizacao, usu_nome"
@@ -464,7 +581,6 @@ def acessoEspecifico(id):
 
     return True, {}, mensagem
 
-
 def trataAcessoIncluido(usu_identificador, usu_nome, descricao):
     if descricao is None or type(descricao) is not str or len(descricao) < 1:
         return {"message": "Descrição é obrigatória e textual."}, 404
@@ -503,7 +619,6 @@ def trataAcessoIncluido(usu_identificador, usu_nome, descricao):
     mensagem["data"] = agora
 
     return mensagem, 201
-
 
 def trataAcessoAlterado(usu_identificador, usu_nome, identificador, descricao):
 
@@ -567,7 +682,6 @@ def trataAcessoAlterado(usu_identificador, usu_nome, identificador, descricao):
 
     return mensagem, 200
 
-
 def trataAcessoDeletado(identificador):
 
     if identificador is None or not acessoBanco.inteiro(identificador):
@@ -600,7 +714,6 @@ def trataAcessoDeletado(identificador):
 
     return {}, 200
 
-
 def perfilNovoLista():
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
@@ -627,7 +740,6 @@ def perfilNovoLista():
         return resultadoFinal, retorno, header
 
     return {"message": "Método invalido"}, 400, {}
-
 
 def perfilAtual(id):
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
@@ -665,7 +777,6 @@ def perfilAtual(id):
         return dados, 200, header
 
     return {"message": "Método invalido"}, 400, header
-
 
 def listaPerfil():
     camposDesejados = (
@@ -708,7 +819,6 @@ def listaPerfil():
     dicRetorno["perfis"] = dadosRetorno
     return dicRetorno, 200
 
-
 def perfilEspecifico(id):
     camposDesejados = (
         "pfu_identificador, pfu_sigla, pfu_descricao, qlu_identificador, qld_identificador, qlt_identificador,"
@@ -749,7 +859,6 @@ def perfilEspecifico(id):
             mensagem["qualificador_" + grupo + "_descricao"] = dadosQual[0][1]
 
     return True, {}, mensagem
-
 
 def trataPerfilIncluido(usu_identificador, usu_nome, sigla, descricao, qual_um, qual_dois, qual_tres, qual_quatro):
     cheque = {}
@@ -900,7 +1009,6 @@ def trataPerfilIncluido(usu_identificador, usu_nome, sigla, descricao, qual_um, 
     mensagem["data"] = agora
 
     return mensagem, 201
-
 
 def trataPerfilAlterado(id, usu_identificador, usu_nome, sigla, descricao, qual_um, qual_dois, qual_tres, qual_quatro):
     cheque = {}
@@ -1095,7 +1203,6 @@ def trataPerfilAlterado(id, usu_identificador, usu_nome, sigla, descricao, qual_
 
     return mensagem, 200
 
-
 def trataPerfilDeletado(identificador):
 
     if identificador is None or not acessoBanco.inteiro(identificador):
@@ -1142,7 +1249,6 @@ def trataPerfilDeletado(identificador):
 
     return {}, 200
 
-
 def transacaoNovoLista():
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
@@ -1163,7 +1269,6 @@ def transacaoNovoLista():
         return resultadoFinal, retorno, header
 
     return {"message": "Método invalido"}, 400, {}
-
 
 def transacaoAtual(id):
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
@@ -1196,7 +1301,6 @@ def transacaoAtual(id):
 
     return {"message": "Método invalido"}, 400, header
 
-
 def listaTransacao():
     camposDesejados = (
         "trn_identificador, trn_descricao, trn_codigo, trn_identificadoratualizacao, trn_dataatualizacao,usu_nome"
@@ -1222,7 +1326,6 @@ def listaTransacao():
     dicRetorno["transacoes"] = dadosRetorno
     return dicRetorno, 200
 
-
 def transacaoEspecifica(id):
     camposDesejados = (
         "trn_identificador, trn_descricao, trn_codigo, trn_identificadoratualizacao, trn_dataatualizacao,usu_nome"
@@ -1244,7 +1347,6 @@ def transacaoEspecifica(id):
         mensagem["data"] = dados[i][4].strftime("%Y-%m-%d %H:%M:%S")
 
     return True, {}, mensagem
-
 
 def trataTransacaoIncluida(usu_identificador, usu_nome, codigo, descricao):
     cheque = {}
@@ -1302,7 +1404,6 @@ def trataTransacaoIncluida(usu_identificador, usu_nome, codigo, descricao):
     mensagem["data"] = agora
 
     return mensagem, 201
-
 
 def trataTransacaoAlterada(id, usu_identificador, usu_nome, codigo, descricao):
     cheque = {}
@@ -1388,7 +1489,6 @@ def trataTransacaoAlterada(id, usu_identificador, usu_nome, codigo, descricao):
 
     return mensagem, 200
 
-
 def trataTransacaoDeletada(identificador):
 
     if identificador is None or not acessoBanco.inteiro(identificador):
@@ -1423,7 +1523,6 @@ def trataTransacaoDeletada(identificador):
 
     return {}, 200
 
-
 def acessoQualifica(id):
     checa, mensagem, header = gestaoAutenticacao.trataValidaToken()
     if not checa:
@@ -1445,7 +1544,6 @@ def acessoQualifica(id):
         return resultadoFinal, retorno, header
 
     return {"message": "Método invalido"}, 400, header
-
 
 def trataAcessoQualificaIncluido(id, usu_identificador, usu_nome, transacao):
     cheque = {}
@@ -1503,7 +1601,6 @@ def trataAcessoQualificaIncluido(id, usu_identificador, usu_nome, transacao):
 
     return mensagem, 201
 
-
 def trataAcessoQualificaDeletado(id, transacao):
     cheque = {}
     cheque["message"] = ""
@@ -1531,3 +1628,770 @@ def trataAcessoQualificaDeletado(id, transacao):
 
     # gera o retorno
     return [], 200
+
+def dicionarioPerfil(usuario,grupo=None):
+    resultadoFinal = {}
+    listaNumero = ("dois", "tres", "quatro")
+    listaIndice = ("entendimento", "escolaridade", "necessidade")
+    for i in range(len(listaNumero)):
+        if grupo is None or grupo == listaIndice[i]:
+            prefixo = listaNumero[i][0]
+            tabela1 = "uq" + prefixo + "_usuarioqualificadorperfil" + listaNumero[i] + " uq"
+            tabela2 = "ql" + prefixo + "_qualificadorperfil" + listaNumero[i] + " ql"
+            tabela = tabela1 + "," + tabela2
+            camposDesejados = (
+                    "ql.ql" + prefixo + "_identificador, "
+                    "ql" + prefixo + "_titulo, "
+                    "ql" + prefixo + "_descricao "
+            )
+            condicao = (
+                    "  WHERE usu_identificador = " + str(usuario) +
+                    " AND uq.ql" + prefixo + "_identificador = " +
+                    "ql.ql" + prefixo + "_identificador"
+            )
+            dadosDetalhe, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposDesejados)
+            if retorno == 400:
+                return 400, {"message": "Erro de acesso ao banco"}
+            listaDetalhe = []
+            for j in range(len(dadosDetalhe)):
+                detalhe = {}
+                detalhe["identificador"] = dadosDetalhe[j][0]
+                detalhe["titulo"] = dadosDetalhe[j][1]
+                detalhe["descricao"] = dadosDetalhe[j][2]
+                listaDetalhe.append(detalhe)
+            resultadoFinal[listaIndice[i]] = listaDetalhe
+    return 200, resultadoFinal
+
+def dicionarioDemaisPerfis(usuario,grupo=None):
+    resultadoFinal = {}
+    listaTabela = (
+        "use_usuarioempregado tb", "uai_usuarioagenteinterno tb, emp_empreendimento fk",
+        "uae_usuarioagenteexterno tb, emp_empreendimento fk, age_agenteexterno ou",
+        "uma_usuariomoradorzas tb, emp_empreendimento fk",
+        "ufa_usuariofrequentadorzas tb, emp_empreendimento fk", "ums_usuariomoradorzss tb, emp_empreendimento fk",
+        "ufs_usuariofrequentadorzss tb, emp_empreendimento fk", "uou_usuariooutrointeresse tb, emp_empreendimento fk"
+    )
+    listaIndice = (
+        "empregado", "agente_interno",
+        "agente_externo", "morador_zas",
+        "frequentador_zas", "morador_zss",
+        "frequentador_zss", "outro_interesse"
+    )
+    camposEmpregado = (
+        "use_identificador", "use_area", "use_funcao"
+    )
+    camposAgenteInterno = (
+        "uai_identificador", "uai_papel",
+        "uai_complemento", "fk.emp_nome"
+    )
+    camposAgenteExterno = (
+        "uae_identificador", "uae_papel", "uae_complemento",
+        "fk.emp_nome", "ou.age_identificacao"
+    )
+    camposMoradorZAS = (
+        "uma_identificador", "uma_cep", "uma_logradouro",
+        "uma_numero", "uma_complemento", 'uma_bairro', "uma_municipio",
+        "fk.emp_nome"
+    )
+    camposFrequentadorZAS = (
+        "ufa_identificador", "ufa_local", "fk.emp_nome"
+    )
+    camposMoradorZSS = (
+        "ums_identificador", "ums_cep", "ums_logradouro", "ums_numero",
+        "ums_complemento", "ums_bairro", "ums_municipio", "fk.emp_nome"
+    )
+    camposFrequentadorZSS = (
+        "ufs_identificador", "ufs_local", "fk.emp_nome"
+    )
+    camposOutroInteresse = (
+        "uou_identificador", "uou_complemento", "fk.emp_nome"
+    )
+    condicaoEmpregado = (
+        ""
+    )
+    condicaoAgenteInterno = (
+        " AND tb.emp_identificador = fk.emp_identificador"
+    )
+    condicaoAgenteExterno = (
+        " AND tb.age_identificador = ou.age_identificador AND tb.emp_identificador = fk.emp_identificador"
+    )
+    condicaoMoradorZAS = (
+        " AND tb.emp_identificador = fk.emp_identificador"
+    )
+    condicaoFrequentadorZAS = (
+        " AND tb.emp_identificador = fk.emp_identificador"
+    )
+    condicaoMoradorZSS = (
+        " AND tb.emp_identificador = fk.emp_identificador"
+    )
+    condicaoFrequentadorZSS = (
+        " AND tb.emp_identificador = fk.emp_identificador"
+    )
+    condicaoOutroInteresse = (
+        " AND tb.emp_identificador = fk.emp_identificador"
+    )
+
+    nomesEmpregado = (
+        "identificador", "area", "funcao"
+    )
+    nomesAgenteInterno = (
+        "identificador", "papel",
+        "complemento", "empreendimento"
+    )
+    nomesAgenteExterno = (
+        "identificador", "papel", "complemento",
+        "empreendimento", "agente"
+    )
+    nomesMoradorZAS = (
+        "identificador", "cep", "logradouro",
+        "numero", "complemento", 'bairro', "municipio",
+        "empreendimento"
+    )
+    nomesFrequentadorZAS = (
+        "identificador", "local", "empreendimento"
+    )
+    nomesMoradorZSS = (
+        "identificador", "cep", "logradouro", "numero",
+        "complemento", "bairro", "municipio", "empreendimento"
+    )
+    nomesFrequentadorZSS = (
+        "identificador", "local", "empreendimento"
+    )
+    nomesOutroInteresse = (
+        "identificador", "complemento", "empreendimento"
+    )
+
+    listaCampos = {}
+    listaCampos["empregado"] = camposEmpregado
+    listaCampos["agente_interno"] = camposAgenteInterno
+    listaCampos["agente_externo"] = camposAgenteExterno
+    listaCampos["morador_zas"] = camposMoradorZAS
+    listaCampos["frequentador_zas"] = camposFrequentadorZAS
+    listaCampos["morador_zss"] = camposMoradorZSS
+    listaCampos["frequentador_zss"] = camposFrequentadorZSS
+    listaCampos["outro_interesse"] = camposOutroInteresse
+
+    listaCondicoes = {}
+    listaCondicoes["empregado"] = condicaoEmpregado
+    listaCondicoes["agente_interno"] = condicaoAgenteInterno
+    listaCondicoes["agente_externo"] = condicaoAgenteExterno
+    listaCondicoes["morador_zas"] = condicaoMoradorZAS
+    listaCondicoes["frequentador_zas"] = condicaoFrequentadorZAS
+    listaCondicoes["morador_zss"] = condicaoMoradorZSS
+    listaCondicoes["frequentador_zss"] = condicaoFrequentadorZSS
+    listaCondicoes["outro_interesse"] = condicaoOutroInteresse
+
+    listaNomes = {}
+    listaNomes["empregado"] = nomesEmpregado
+    listaNomes["agente_interno"] = nomesAgenteInterno
+    listaNomes["agente_externo"] = nomesAgenteExterno
+    listaNomes["morador_zas"] = nomesMoradorZAS
+    listaNomes["frequentador_zas"] = nomesFrequentadorZAS
+    listaNomes["morador_zss"] = nomesMoradorZSS
+    listaNomes["frequentador_zss"] = nomesFrequentadorZSS
+    listaNomes["outro_interesse"] = nomesOutroInteresse
+
+    for i in range(0, 8):
+        if grupo is None or listaIndice[i] == grupo:
+            tabela = listaTabela[i]
+            camposDesejados = ""
+            for j in range(len(listaCampos[listaIndice[i]])):
+                camposDesejados = camposDesejados + "," + listaCampos[listaIndice[i]][j]
+
+            condicao = (
+                    "  WHERE usu_identificador = " + str(usuario) + listaCondicoes[listaIndice[i]]
+            )
+
+            dadosDetalhe, retorno, mensagemRetorno = acessoBanco.leDado(tabela, condicao, camposDesejados[1:])
+            if retorno == 400:
+                return 400, {"message": "Erro de acesso ao banco"}
+            listaDetalhe = []
+            for j in range(len(dadosDetalhe)):
+                detalhe = {}
+                for k in range(len(listaCampos[listaIndice[i]])):
+                    detalhe[listaNomes[listaIndice[i]][k]] = dadosDetalhe[j][k]
+                listaDetalhe.append(detalhe)
+            resultadoFinal[listaIndice[i]] = listaDetalhe
+    return 200, resultadoFinal
+
+def trataEmpregado(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    area = entrada.get("area")
+    funcao = entrada.get("funcao")
+
+    if area is None or type(area) is not str or len(area) < 1:
+        cheque["message"] = "Área é obrigatoria e textual."
+        erro = True
+
+    if funcao is None or type(funcao) is not str or len(funcao) < 1:
+        if not erro:
+            cheque["message"] = "Função é obrigatória e textual."
+        else:
+            cheque["message"] = cheque["message"] + " - Função é obrigatória e textual."
+        erro = True
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(use_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("use_usuarioempregado", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "use_identificador, use_area, use_funcao, usu_identificador, use_identificadoratualizacao, use_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ",'"
+        + area
+        + "','"
+        + funcao
+        + "',"
+        + str(usuario)
+        + ","
+        + str(usuario)
+         + ",'"
+        + agora
+        + "'"
+    )
+    dados, retorno, header = acessoBanco.insereDado("use_usuarioempregado", camposDesejados, valores)
+
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
+
+def trataAgenteInterno(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    complemento = entrada.get("complemento")
+    empreendimento = entrada.get("empreendimento")
+    papel = entrada.get("papel")
+
+    if papel is None or type(papel) is not str or len(papel) < 1:
+        cheque["message"] = "Papel é obrigatorio e textual."
+        erro = True
+
+    if complemento is None or type(complemento) is not str or len(complemento) < 1:
+        complemento = ""
+
+    if empreendimento is None or not acessoBanco.inteiro(empreendimento):
+        if not erro:
+            cheque["message"] = "Empreendimento é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Empreendimento é obrigatório e numérico."
+        erro = True
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(uai_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("uai_usuarioagenteinterno", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "uai_identificador, uai_papel, uai_complemento, emp_identificador,"
+        "usu_identificador, uai_identificadoratualizacao, uai_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ",'"
+        + papel
+        + "','"
+        + complemento
+        + "',"
+        + str(empreendimento)
+        + ","
+        + str(usuario)
+        + ","
+        + str(usuario)
+        + ",'"
+        + agora
+        + "'"
+    )
+    dados, retorno, header = acessoBanco.insereDado("uai_usuarioagenteinterno", camposDesejados, valores)
+
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
+
+def trataAgenteExterno(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    agente = entrada.get("agente")
+    complemento = entrada.get("complemento")
+    empreendimento = entrada.get("empreendimento")
+    papel = entrada.get("papel")
+
+    if papel is None or type(papel) is not str or len(papel) < 1:
+        cheque["message"] = "Papel é obrigatorio e textual."
+        erro = True
+
+    if complemento is None or type(complemento) is not str or len(complemento) < 1:
+        complemento = ""
+
+    if agente is None or not acessoBanco.inteiro(agente):
+        if not erro:
+            cheque["message"] = "Agente é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Agente é obrigatório e numérico."
+        erro = True
+
+    if empreendimento is None or not acessoBanco.inteiro(empreendimento):
+        if not erro:
+            cheque["message"] = "Empreendimento é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Empreendimento é obrigatório e numérico."
+        erro = True
+
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(uae_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("uae_usuarioagenteexterno", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "uae_identificador, uae_papel, uae_complemento, usu_identificador, emp_identificador,"
+        "age_identificador, uae_identificadoratualizacao, uae_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ",'"
+        + papel
+        + "','"
+        + complemento
+        + "',"
+        + str(usuario)
+        + ","
+        + str(empreendimento)
+        + ","
+        + str(agente)
+        + ","
+        + str(usuario)
+        + ",'"
+        + agora
+        + "'"
+    )
+    dados, retorno, header = acessoBanco.insereDado("uae_usuarioagenteexterno", camposDesejados, valores)
+
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
+
+def trataMoradorZAS(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    bairro = entrada.get("bairro")
+    cep = entrada.get("cep")
+    empreendimento = entrada.get("empreendimento")
+    logradouro = entrada.get("logradouro")
+    municipio = entrada.get("municipio")
+    numero = entrada.get("numero")
+    complemento = entrada.get("complemento")
+
+    if logradouro is None or type(logradouro) is not str or len(logradouro) < 1:
+        cheque["message"] = "Logradouro é obrigatorio e textual."
+        erro = True
+
+    if complemento is None or type(complemento) is not str or len(complemento) < 1:
+        complemento = ""
+
+    if bairro is None or type(bairro) is not str or len(bairro) < 1:
+        bairro = ""
+
+    if cep is None or not acessoBanco.inteiro(cep):
+        cep = 0
+
+    if numero is None or not acessoBanco.inteiro(numero):
+        numero = 0
+
+    if municipio is None or type(municipio) is not str or len(municipio) < 1:
+        if not erro:
+            cheque["message"] = "Municipio é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Municipio é obrigatório e numérico."
+        erro = True
+
+    if empreendimento is None or not acessoBanco.inteiro(empreendimento):
+        if not erro:
+            cheque["message"] = "Empreendimento é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Empreendimento é obrigatório e numérico."
+        erro = True
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(uma_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("uma_usuariomoradorzas", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "uma_identificador, uma_cep, uma_logradouro, uma_numero, uma_complemento, "
+        "uma_bairro, uma_municipio, emp_identificador, usu_identificador, "
+        "uma_identificadoratualizacao, uma_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ","
+        + str(cep)
+        + ",'"
+        + logradouro
+        + "',"
+        + str(numero)
+        + ",'"
+        + complemento
+        + "','"
+        + bairro
+        + "','"
+        + municipio
+        + "',"
+        + str(empreendimento)
+        + ","
+        + str(usuario)
+        + ","
+        + str(usuario)
+        + ",'"
+        + agora
+        + "'"
+    )
+
+    dados, retorno, header = acessoBanco.insereDado("uma_usuariomoradorzas", camposDesejados, valores)
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
+
+def trataMoradorZSS(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    bairro = entrada.get("bairro")
+    cep = entrada.get("cep")
+    empreendimento = entrada.get("empreendimento")
+    logradouro = entrada.get("logradouro")
+    municipio = entrada.get("municipio")
+    numero = entrada.get("numero")
+    complemento = entrada.get("complemento")
+
+    if logradouro is None or type(logradouro) is not str or len(logradouro) < 1:
+        cheque["message"] = "Logradouro é obrigatorio e textual."
+        erro = True
+
+    if complemento is None or type(complemento) is not str or len(complemento) < 1:
+        complemento = ""
+
+    if bairro is None or type(bairro) is not str or len(bairro) < 1:
+        bairro = ""
+
+    if cep is None or not acessoBanco.inteiro(cep):
+        cep = 0
+
+    if numero is None or not acessoBanco.inteiro(numero):
+        numero = 0
+
+    if municipio is None or type(municipio) is not str or len(municipio) < 1:
+        if not erro:
+            cheque["message"] = "Municipio é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Municipio é obrigatório e numérico."
+        erro = True
+
+    if empreendimento is None or not acessoBanco.inteiro(empreendimento):
+        if not erro:
+            cheque["message"] = "Empreendimento é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Empreendimento é obrigatório e numérico."
+        erro = True
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(ums_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("ums_usuariomoradorzss", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "ums_identificador, ums_cep, ums_logradouro, ums_numero, ums_complemento,"
+        "ums_bairro, ums_municipio, emp_identificador, usu_identificador, "
+        "ums_identificadoratualizacao, ums_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ","
+        + str(cep)
+        + ",'"
+        + logradouro
+        + "',"
+        + str(numero)
+        + ",'"
+        + complemento
+        + "','"
+        + bairro
+        + "','"
+        + municipio
+        + "',"
+        + str(empreendimento)
+        + ","
+        + str(usuario)
+        + ","
+        + str(usuario)
+        + ",'"
+        + agora
+        + "'"
+    )
+
+    dados, retorno, header = acessoBanco.insereDado("ums_usuariomoradorzss", camposDesejados, valores)
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
+
+def trataFrequentadorZAS(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    local = entrada.get("local")
+    empreendimento = entrada.get("empreendimento")
+
+
+    if local is None or type(local) is not str or len(local) < 1:
+        cheque["message"] = "Local é obrigatorio e textual."
+        erro = True
+
+    if empreendimento is None or not acessoBanco.inteiro(empreendimento):
+        if not erro:
+            cheque["message"] = "Empreendimento é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Empreendimento é obrigatório e numérico."
+        erro = True
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(ufa_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("ufa_usuariofrequentadorzas", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "ufa_identificador, ufa_local, emp_identificador, usu_identificador,"
+        "ufa_identificadoratualizacao, ufa_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ",'"
+        + local
+        + "',"
+        + str(empreendimento)
+        + ","
+        + str(usuario)
+        + ","
+        + str(usuario)
+        + ",'"
+        + agora
+        + "'"
+    )
+
+    dados, retorno, header = acessoBanco.insereDado("ufa_usuariofrequentadorzas", camposDesejados, valores)
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
+
+def trataFrequentadorZSS(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    local = entrada.get("local")
+    empreendimento = entrada.get("empreendimento")
+
+
+    if local is None or type(local) is not str or len(local) < 1:
+        cheque["message"] = "Local é obrigatorio e textual."
+        erro = True
+
+    if empreendimento is None or not acessoBanco.inteiro(empreendimento):
+        if not erro:
+            cheque["message"] = "Empreendimento é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Empreendimento é obrigatório e numérico."
+        erro = True
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(ufs_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("ufs_usuariofrequentadorzss", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "ufs_identificador, ufs_local, emp_identificador, usu_identificador,"
+        "ufs_identificadoratualizacao, ufs_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ",'"
+        + local
+        + "',"
+        + str(empreendimento)
+        + ","
+        + str(usuario)
+        + ","
+        + str(usuario)
+        + ",'"
+        + agora
+        + "'"
+    )
+
+    dados, retorno, header = acessoBanco.insereDado("ufs_usuariofrequentadorzss", camposDesejados, valores)
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
+
+def trataOutroInteresse(entrada, usuario):
+    cheque = {}
+    cheque["message"] = ""
+    erro = False
+    complemento = entrada.get("complemento")
+    empreendimento = entrada.get("empreendimento")
+
+    if complemento is None or type(complemento) is not str or len(complemento) < 1:
+        cheque["message"] = "Complemento é obrigatorio e textual."
+        erro = True
+
+    if empreendimento is None or not acessoBanco.inteiro(empreendimento):
+        if not erro:
+            cheque["message"] = "Empreendimento é obrigatório e numérico."
+        else:
+            cheque["message"] = cheque["message"] + " - Empreendimento é obrigatório e numérico."
+        erro = True
+
+    if erro:
+        return cheque, 404
+
+    # recupera o último identificador
+    camposDesejados = "max(uou_identificador)"
+    dados, retorno, mensagemRetorno = acessoBanco.leDado("uou_usuariooutrointeresse", None, camposDesejados)
+    if retorno == 400:
+        return {"message": "Erro no acesso ao banco de dados"}, retorno
+
+    if dados == []:
+        proximoNumero = 1
+    else:
+        proximoNumero = dados[0][0] + 1
+    agora = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    camposDesejados = (
+        "uou_identificador, uou_complemento, usu_identificador, emp_identificador,"
+        "uou_identificadoratualizacao, uou_dataatualizacao"
+    )
+    valores = (
+        str(proximoNumero)
+        + ",'"
+        + complemento
+        + "',"
+        + str(usuario)
+        + ","
+        + str(empreendimento)
+        + ","
+        + str(usuario)
+        + ",'"
+        + agora
+        + "'"
+    )
+
+    dados, retorno, header = acessoBanco.insereDado("uou_usuariooutrointeresse", camposDesejados, valores)
+    if retorno != 201:
+        return {"message": "Erro no acesso ao banco de dados"}, 400
+
+    # gera o retorno
+    mensagem = {}
+    mensagem["id"] = proximoNumero
+
+    return mensagem, 201
