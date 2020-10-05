@@ -22,6 +22,10 @@ def api_usuario_inativo(id):
     resultado, retorno, header = gestaoUsuario.usuarioInativo(id)
     return jsonify(resultado), retorno, header
 
+@app.route("/seguranca_barragem/users/<int:id>/activate", methods=["PATCH"])
+def api_usuario_ativo(id):
+    resultado, retorno, header = gestaoUsuario.usuarioAtivo(id)
+    return jsonify(resultado), retorno, header
 
 @app.route("/seguranca_barragem/users/recover", methods=["POST"])
 def api_usuario_senha():
@@ -31,6 +35,11 @@ def api_usuario_senha():
 @app.route("/seguranca_barragem/users/email", methods=["POST","GET"])
 def api_usuario_email_inclui_lista():
     resultado, retorno, header = gestaoUsuario.emailIncluiLista()
+    return jsonify(resultado), retorno, header
+
+@app.route("/seguranca_barragem/users/role", methods=["PATCH"])
+def api_usuario_acesso():
+    resultado, retorno, header = gestaoUsuario.atualizaAcesso()
     return jsonify(resultado), retorno, header
 
 @app.route("/seguranca_barragem/users/email/<int:id>", methods=["DELETE"])
