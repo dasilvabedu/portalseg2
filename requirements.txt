@@ -30,7 +30,7 @@ preshed==2.0.1
 psycopg2==2.8.5
 pybase64==1.0.1
 pycparser==2.20
-PyJWT==1.7.1
+PyJWT==2.4.0
 pymongo==3.10.1
 pyparsing==2.4.7
 python-dateutil==2.7.5
